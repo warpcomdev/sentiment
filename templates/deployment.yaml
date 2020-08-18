@@ -1,0 +1,52 @@
+{{ $fullname := include "sentiment.fullname" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "sentiment.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replication.initialCount }}
+  {{- with .Values.replication.strategy }}
+  strategy:
+    {{ toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      name: {{ $fullname }}
+      labels:
+        {{- include "sentiment.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - envFrom:
+        - secretRef:
+            name: {{ $fullname }}
+        - configMapRef:
+            name: {{ $fullname }}
+        image: {{ .Values.image.repository }}:{{ .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: sentiment
+        ports:
+        - name: www
+          containerPort: {{ .Values.port }}
+        {{- with .Values.resources }}
+        resources:
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+        {{ with .Values.livenessProbe }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ $.Values.port }}
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: cache
+          mountPath: {{ .Values.cache_dir | quote }}
+      volumes:
+      - name: cache
+        emptyDir: {}
+  selector:
+    matchLabels:
+      {{- include "sentiment.selectorLabels" . | nindent 6 }}
+

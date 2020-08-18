@@ -78,7 +78,7 @@ def sentiment():
     if not request.json or not 'sentences' in request.json:
          abort(400)
     sentences = request.json['sentences']
-    return jsonify({'sentiment': pipeline(sentences) })
+    return jsonify({'sentiment': pipeline(sentences).tolist() })
 
 
 @app.errorhandler(404)
