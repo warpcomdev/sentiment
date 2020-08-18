@@ -61,14 +61,14 @@ def verify_token(token):
         return 'admin'
 
 
-@app.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify({'error': 'Not Found'}), 404)
-
-
-@auth.error_handler
-def auth_error(status):
-    return make_response(jsonify({'error': 'Invalid credentials'}), status)
+@app.route('/healthz')
+def healthz():
+    """Health endpoint"""
+    try:
+        pipeline(['Test sentence to trigger the pipeline'])
+        return jsonify({'status': 'ok'})
+    except:
+        return make_reponse(jsonify({'error': 'test failed'}), 500)
 
 
 @app.route('/api/sentiment', methods=['POST'])
@@ -79,6 +79,16 @@ def sentiment():
          abort(400)
     sentences = request.json['sentences']
     return jsonify({'sentiment': pipeline(sentences) })
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not Found'}), 404)
+
+
+@auth.error_handler
+def auth_error(status):
+    return make_response(jsonify({'error': 'Invalid credentials'}), status)
 
 
 if __name__ == '__main__':
