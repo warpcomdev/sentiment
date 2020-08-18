@@ -11,4 +11,5 @@ ADD sentiment.py /app/sentiment.py
 
 # Boot application
 WORKDIR /app
-CMD gunicorn --bind 0.0.0.0:${MODEL_PORT:-3000} sentiment:app
+CMD gunicorn --bind 0.0.0.0:${MODEL_PORT:-3000} sentiment:app \
+             --access-logfile - --error-logfile -
