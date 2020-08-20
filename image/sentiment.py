@@ -2,11 +2,16 @@
 import os
 import string
 import random
+import re
 
 from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
 import tensorflow as tf
 
+import jsonschema
+import hunspell
+
 from flask import Flask, make_response, jsonify, request, abort
+from flask_swagger import swagger
 from flask_httpauth import HTTPTokenAuth
 auth = HTTPTokenAuth(scheme='Bearer')
 
@@ -54,6 +59,75 @@ class Pipeline:
 pipeline = Pipeline(MODEL_NAME, cache_dir=MODEL_CACHE_DIR, from_pt=MODEL_IS_PYTORCH)
 
 
+class Spellcheck:
+
+    """Spell check pipeline"""
+    def __init__(self):
+        """Load the hunspell dictionaries"""
+        self.lang = {
+            'en': hunspell.HunSpell('/usr/share/hunspell/en_US.dic', '/usr/share/hunspell/en_US.aff'),
+            'es': hunspell.HunSpell('/usr/share/hunspell/es_ES.dic', '/usr/share/hunspell/es_ES.aff'),
+            'de': hunspell.HunSpell('/usr/share/hunspell/de_DE.dic', '/usr/share/hunspell/de_DE.aff'),
+            'fr': hunspell.HunSpell('/usr/share/hunspell/fr_FR.dic', '/usr/share/hunspell/fr_FR.aff'),
+            'it': hunspell.HunSpell('/usr/share/hunspell/it_IT.dic', '/usr/share/hunspell/it_IT.aff'),
+        }
+
+    def __call__(self, sentences):
+        """Return spell checked terms"""
+        terms = list()
+
+        def check_term(term, checker):
+            # Skip uppercased words that can be places, names, etc.
+            if term[0].isupper() or checker.spell(term):
+                return term
+            suggest = checker.suggest(term)
+            if len(suggest) > 0:
+                return suggest[0]
+            return term
+
+        for sentence in sentences:
+            lang = sentence['lang']
+            text = sentence['text']
+            checker = self.lang.get(lang, None)
+            if checker is None:
+                terms.append(text)
+                continue
+            tokens = (check_term(term, checker)
+                for term in re.findall(r'\w+', text))
+            terms.append(' '.join(tokens))
+        return terms
+
+spellcheck = Spellcheck()
+
+
+# Requests schema
+schema = {
+    'type': 'object',
+    'properties': {
+        'sentences': {
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {
+                    'lang': {'type': 'string'},
+                    'text': {'type': 'string'}
+                },
+                'required': ['lang', 'text']
+            }
+        }
+    },
+    'required': ['sentences']
+}
+
+def validate(item, schema=schema):
+    """Validate item with json schema"""
+    try:
+        jsonschema.validate(instance=item, schema=schema)
+        return True
+    except jsonschema.ValidationError as err:
+        return False
+
+
 @auth.verify_token
 def verify_token(token):
     """Only the MODEL_TOKEN is currently supported"""
@@ -63,7 +137,12 @@ def verify_token(token):
 
 @app.route('/healthz')
 def healthz():
-    """Health endpoint"""
+    """
+    Health endpoint
+    ---
+    tags:
+    - healthz
+    """
     try:
         pipeline(['Test sentence to trigger the pipeline'])
         return jsonify({'status': 'ok'})
@@ -71,14 +150,97 @@ def healthz():
         return make_reponse(jsonify({'error': 'test failed'}), 500)
 
 
+@app.route('/spec')
+def spec():
+    swag = swagger(app)
+    swag['info']['title'] = 'Sentiment Analyzer'
+    swag['securityDefinitions'] = {
+      'Bearer': {
+        'type': 'apiKey',
+        'name': 'Authorization',
+        'in': 'header',
+      }
+    }
+    return jsonify(swag)
+
+
 @app.route('/api/sentiment', methods=['POST'])
 @auth.login_required
 def sentiment():
-    """Expects a list of strings embedded in JSON { 'sentences': [ ... ] }"""
-    if not request.json or not 'sentences' in request.json:
+    """
+    Extract sentiment information from sentences
+    ---
+    tags:
+    - sentiment
+    parameters:
+    - in: body
+      name: body
+      schema:
+        $ref: "#/definitions/sentences"
+    security:
+    - Bearer: []
+    definitions:
+    - schema:
+        id: sentences
+        properies:
+          sentences:
+            type: array
+            description: list of sentences
+            items:
+              $ref: "#/definitions/sentence"
+        required:
+        - sentences
+    - schema:
+        id: sentence
+        properties:
+          lang:
+            type: string
+          text:
+            type: string
+        required:
+        - lang
+        - text
+    responses:
+      200:
+        descripcion: ok
+      400:
+        description: Invalid input
+      401:
+        description: forbidden
+    """
+    if not request.json or not validate(request.json):
+         abort(400)
+    sentences = (item['text'] for item in request.json['sentences'])
+    return jsonify({'sentiment': pipeline(sentences).tolist() })
+
+
+@app.route('/api/spell', methods=['POST'])
+@auth.login_required
+def spell():
+    """
+    Spell check input sentences
+    ---
+    tags:
+    - spelling
+    parameters:
+    - in: body
+      name: body
+      schema:
+        $ref: "#/definitions/sentences"
+    security:
+    - Bearer: []
+    responses:
+      200:
+        descripcion: ok
+      400:
+        description: Invalid input
+      401:
+        description: forbidden
+    """
+    if not request.json or not validate(request.json):
          abort(400)
     sentences = request.json['sentences']
-    return jsonify({'sentiment': pipeline(sentences).tolist() })
+    return jsonify({'spell': spellcheck(sentences)})
 
 
 @app.errorhandler(404)
@@ -93,5 +255,5 @@ def auth_error(status):
 
 if __name__ == '__main__':
     print(f"USE BEARER TOKEN '{MODEL_TOKEN}'")
-    app.run(port=MODEL_PORT, debug=MODEL_DEBUG)
+    app.run(host="0.0.0.0", port=MODEL_PORT, debug=MODEL_DEBUG)
 

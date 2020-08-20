@@ -1,5 +1,6 @@
 absl-py==0.9.0
 astunparse==1.6.3
+attrs==19.3.0
 cachetools==4.1.1
 certifi==2020.6.20
 chardet==3.0.4
@@ -7,6 +8,7 @@ click==7.1.2
 filelock==3.0.12
 Flask==1.1.2
 Flask-HTTPAuth==4.1.0
+flask-swagger==0.2.14
 future==0.18.2
 gast==0.3.3
 google-auth==1.20.1
@@ -15,10 +17,12 @@ google-pasta==0.2.0
 grpcio==1.31.0
 gunicorn==20.0.4
 h5py==2.10.0
+hunspell @ file:///app/hunspell-0.5.5-cp38-cp38-linux_x86_64.whl
 idna==2.10
 itsdangerous==1.1.0
 Jinja2==2.11.2
 joblib==0.16.0
+jsonschema==3.2.0
 Keras-Preprocessing==1.1.2
 Markdown==3.2.2
 MarkupSafe==1.1.1
@@ -31,7 +35,9 @@ protobuf==3.13.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pyparsing==2.4.7
+pyrsistent==0.16.0
 python-dotenv==0.14.0
+PyYAML==5.3.1
 regex==2020.7.14
 requests==2.24.0
 requests-oauthlib==1.3.0
