@@ -1,0 +1,21 @@
+{{- if and .Values.tls.enabled .Values.tls.create }}
+{{ $fullname := include "sentiment.fullname" . }}
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "sentiment.labels" . | nindent 4 }}
+spec:
+  dnsNames:
+  {{ toYaml .Values.hostnames | nindent 2 }}
+  issuerRef:
+    kind: ClusterIssuer
+    name: {{ .Values.tls.issuer }}
+  renewBefore: 48h0m0s
+  {{- if .Values.tls.secret }}
+  secretName: {{ .Values.tls.secret }}
+  {{- else }}
+  secretName: {{ $fullname }}-cert
+  {{- end }}
+{{- end }}

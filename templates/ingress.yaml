@@ -6,11 +6,21 @@ metadata:
   labels:
     {{- include "sentiment.labels" . | nindent 4 }}
 spec:
+  tls:
+  - hosts:
+    {{ toYaml .Values.hostnames | nindent 4 }}
+    {{- if .Values.tls.secret }}
+    secretName: {{ .Values.tls.secret }}
+    {{- else }}
+    secretName: "{{ $fullname }}-cert"
+    {{- end }}
   rules:
-  - host: {{ .Values.hostname | quote }}
+  {{- range .Values.hostnames }}
+  - host: {{ . | quote }}
     http:
       paths:
       - path: /
         backend:
           serviceName: {{ $fullname }}
-          servicePort: {{ .Values.port }}
+          servicePort: {{ $.Values.port }}
+  {{- end }}
