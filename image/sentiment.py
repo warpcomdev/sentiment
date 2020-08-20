@@ -142,12 +142,11 @@ def healthz():
     ---
     tags:
     - healthz
+    responses:
+      200:
+        descripcion: ok
     """
-    try:
-        pipeline(['Test sentence to trigger the pipeline'])
-        return jsonify({'status': 'ok'})
-    except:
-        return make_reponse(jsonify({'error': 'test failed'}), 500)
+    return jsonify({'status': 'ok'})
 
 
 @app.route('/spec')
