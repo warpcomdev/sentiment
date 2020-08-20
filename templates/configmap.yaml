@@ -11,3 +11,4 @@ data:
   MODEL_NAME: {{ .Values.model | quote }}
   MODEL_IS_PYTORCH: {{ if .Values.isPyTorch }}"true"{{ else }}"false"{{ end }}
   MODEL_PORT: {{ .Values.port | quote }}
+  MODEL_PROXY: true

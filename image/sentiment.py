@@ -11,6 +11,7 @@ import jsonschema
 import hunspell
 
 from flask import Flask, make_response, jsonify, request, abort
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_swagger import swagger
 from flask_httpauth import HTTPTokenAuth
 auth = HTTPTokenAuth(scheme='Bearer')
@@ -20,15 +21,13 @@ from dotenv import load_dotenv
 load_dotenv(MODEL_ENV_DIR)
 
 
-app = Flask(__name__)
-
-
 def as_boolean(val: str):
     """Turn a string into a boolean"""
     return True if val.lower() in (
         'y', 'yes', 't', 'true', 's', 'si', 'sí', '1', 'o'
     ) else False
 
+MODEL_PROXY = as_boolean(os.getenv('MODEL_PROXY', default='f'))
 MODEL_CACHE_DIR = os.getenv('MODEL_CACHE_DIR', '/var/cache/sentiment')
 MODEL_PORT = int(os.getenv('MODEL_PORT', default='3000'))
 MODEL_NAME = os.getenv('MODEL_NAME', default='nlptown/bert-base-multilingual-uncased-sentiment')
@@ -38,6 +37,12 @@ MODEL_TOKEN = os.getenv('MODEL_TOKEN', ''.join(random.choices(
     string.ascii_uppercase +
     string.ascii_lowercase +
     string.digits, k=32)))
+
+
+app = Flask(__name__)
+if MODEL_PROXY:
+    # Manage X-Forwarded-Proto
+    app.wsgi_app = ProxyFix(app.wsgi_app)
 
 
 class Pipeline:
@@ -142,12 +147,16 @@ def healthz():
     ---
     tags:
     - healthz
+    responses:
+      200:
+        description: ok
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
     """
-    try:
-        pipeline(['Test sentence to trigger the pipeline'])
-        return jsonify({'status': 'ok'})
-    except:
-        return make_reponse(jsonify({'error': 'test failed'}), 500)
+    return jsonify({'status': 'ok'})
 
 
 @app.route('/spec')
@@ -161,6 +170,8 @@ def spec():
         'in': 'header',
       }
     }
+    swag['host'] = request.host
+    swag['schemes'] = [request.scheme]
     return jsonify(swag)
 
 
@@ -182,7 +193,7 @@ def sentiment():
     definitions:
     - schema:
         id: sentences
-        properies:
+        properties:
           sentences:
             type: array
             description: list of sentences
@@ -200,16 +211,36 @@ def sentiment():
         required:
         - lang
         - text
+    - schema:
+        id: error
+        properties:
+          error:
+            type: string
+        required:
+        - error
     responses:
       200:
-        descripcion: ok
+        description: ok
+        schema:
+          type: object
+          properties:
+            sentiment:
+              type: array
+              items:
+                type: array
+                items:
+                  type: number
       400:
         description: Invalid input
+        schema:
+          $ref: "#/definitions/error"
       401:
         description: forbidden
+        schema:
+          $ref: "#/definitions/error"
     """
     if not request.json or not validate(request.json):
-         abort(400)
+        return make_response(jsonify({'error': 'Invalid input'}), 400)
     sentences = (item['text'] for item in request.json['sentences'])
     return jsonify({'sentiment': pipeline(sentences).tolist() })
 
@@ -231,14 +262,26 @@ def spell():
     - Bearer: []
     responses:
       200:
-        descripcion: ok
+        description: ok
+        schema:
+          id: spell
+          type: object
+          properties:
+            spell:
+              type: array
+              items:
+                type: string
       400:
         description: Invalid input
+        schema:
+          $ref: "#/definitions/error"
       401:
         description: forbidden
+        schema:
+          $ref: "#/definitions/error"
     """
     if not request.json or not validate(request.json):
-         abort(400)
+        return make_response(jsonify({'error': 'Invalid input'}), 400)
     sentences = request.json['sentences']
     return jsonify({'spell': spellcheck(sentences)})
 
