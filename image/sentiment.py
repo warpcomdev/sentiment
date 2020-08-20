@@ -243,7 +243,7 @@ def sentiment():
     """
     if not request.json or not validate(request.json):
         return make_response(jsonify({'error': 'Invalid input'}), 400)
-    sentences = (item['text'] for item in request.json['sentences'])
+    sentences = tuple(item['text'] for item in request.json['sentences'])
     return jsonify({'sentiment': pipeline(sentences).tolist() })
 
 
