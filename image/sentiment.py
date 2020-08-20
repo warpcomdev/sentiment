@@ -14,6 +14,7 @@ from flask import Flask, make_response, jsonify, request, abort
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_swagger import swagger
 from flask_httpauth import HTTPTokenAuth
+from flask_cors import CORS
 auth = HTTPTokenAuth(scheme='Bearer')
 
 MODEL_ENV_DIR = os.getenv('MODEL_ENV_DIR', '/etc/sentiment')
@@ -43,6 +44,7 @@ app = Flask(__name__)
 if MODEL_PROXY:
     # Manage X-Forwarded-Proto
     app.wsgi_app = ProxyFix(app.wsgi_app)
+CORS(app)
 
 
 class Pipeline:
