@@ -69,7 +69,7 @@ class Pipeline:
         """Apply the pipeline to a list of sentences"""
         tokens = self.tokenizer(sentences, padding=True, truncation=True, return_tensors='pt')
         logits = self.model(**tokens)[0]
-        result = torch.softmax(logits, dim=1).tolist()[0]
+        result = torch.softmax(logits, dim=1).tolist()
         return result
 
 pipeline = Pipeline(MODEL_NAME, cache_dir=MODEL_CACHE_DIR)
