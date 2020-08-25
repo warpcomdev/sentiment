@@ -1,16 +1,30 @@
 #!/usr/bin/env python
+"""Sentiment module performs NLP analysis on text data"""
+# pylint: disable=import-error,too-few-public-methods
+
 import os
 import string
 import random
-import re
+import json
+from collections import Counter
+from functools import wraps
 
-from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
-import tensorflow as tf
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
 
 import jsonschema
+import textdistance
 import hunspell
 
-from flask import Flask, make_response, jsonify, request, abort
+import en_core_web_sm
+import es_core_news_sm
+import de_core_news_sm
+import fr_core_news_sm
+import it_core_news_sm
+import pt_core_news_sm
+
+from dotenv import load_dotenv
+from flask import Flask, Response, make_response, jsonify, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_swagger import swagger
 from flask_httpauth import HTTPTokenAuth
@@ -18,27 +32,25 @@ from flask_cors import CORS
 auth = HTTPTokenAuth(scheme='Bearer')
 
 MODEL_ENV_DIR = os.getenv('MODEL_ENV_DIR', '/etc/sentiment')
-from dotenv import load_dotenv
 load_dotenv(MODEL_ENV_DIR)
 
 
 def as_boolean(val: str):
     """Turn a string into a boolean"""
-    return True if val.lower() in (
-        'y', 'yes', 't', 'true', 's', 'si', 'sí', '1', 'o'
-    ) else False
+    return val.lower() in ('y', 'yes', 't', 'true', 's', 'si', 'on', '1')
+
 
 MODEL_PROXY = as_boolean(os.getenv('MODEL_PROXY', default='f'))
 MODEL_CACHE_DIR = os.getenv('MODEL_CACHE_DIR', '/var/cache/sentiment')
 MODEL_PORT = int(os.getenv('MODEL_PORT', default='3000'))
-MODEL_NAME = os.getenv('MODEL_NAME', default='nlptown/bert-base-multilingual-uncased-sentiment')
-MODEL_IS_PYTORCH = as_boolean(os.getenv('MODEL_IS_PYTORCH', default='t'))
+MODEL_NAME = os.getenv(
+    'MODEL_NAME', default='nlptown/bert-base-multilingual-uncased-sentiment')
 MODEL_DEBUG = as_boolean(os.getenv('MODEL_DEBUG', default='f'))
-MODEL_TOKEN = os.getenv('MODEL_TOKEN', ''.join(random.choices(
-    string.ascii_uppercase +
-    string.ascii_lowercase +
-    string.digits, k=32)))
-
+MODEL_TOKEN = os.getenv(
+    'MODEL_TOKEN', ''.join(
+        random.choices(string.ascii_uppercase + string.ascii_lowercase +
+                       string.digits,
+                       k=32)))
 
 app = Flask(__name__)
 if MODEL_PROXY:
@@ -48,64 +60,157 @@ CORS(app)
 
 
 class Pipeline:
-
     """Pipeline built with Hugginface's transformers"""
-
-    def __init__(self, model_name, cache_dir=None, from_pt=False):
+    def __init__(self, model_name, cache_dir=None):
         """Init the pipeline from the given model name"""
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = TFAutoModelForSequenceClassification.from_pretrained(model_name, cache_dir=cache_dir, from_pt=from_pt)
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            model_name, cache_dir=cache_dir)
 
-    def __call__(self, sentences):
-        """Apply the pipeline to a list of sentences"""
-        tokens = self.tokenizer(sentences, padding=True, truncation=True, return_tensors='tf')
-        legits = self.model(tokens)
-        result = tf.nn.softmax(legits).numpy()[0]
+    def _batch(self, sentences):
+        """Analize a batch of sentences"""
+        tokens = self.tokenizer(sentences,
+                                padding=True,
+                                truncation=True,
+                                return_tensors='pt')
+        logits = self.model(**tokens)[0]
+        #pylint: disable=no-member
+        result = torch.softmax(logits, dim=1).tolist()
         return result
 
-pipeline = Pipeline(MODEL_NAME, cache_dir=MODEL_CACHE_DIR, from_pt=MODEL_IS_PYTORCH)
+    def __call__(self, sentences, batch_size=10):
+        """Generate sentiment data for a list of sentences"""
+        for index in range(0, len(sentences), batch_size):
+            for row in self._batch(sentences[index:index + batch_size]):
+                yield row
+
+
+pipeline = Pipeline(MODEL_NAME, cache_dir=MODEL_CACHE_DIR)
+
+
+def memoize(func):
+    """Caching functions of one argument"""
+    #pylint: disable=dangerous-default-value
+    @wraps(func)
+    def wrapped(arg, cache=dict()):
+        cached = cache.get(arg, None)
+        if cached is None:
+            cached = func(arg)
+            if cached is not None:
+                cache[arg] = cached
+        return cached
+
+    return wrapped
+
+
+@memoize
+def _nlp(spacy_module):
+    print("Loading spacy language model for '", spacy_module, "'")
+    if spacy_module == 'en':
+        nlp = en_core_web_sm.load()
+    elif spacy_module == 'es':
+        nlp = es_core_news_sm.load()
+    elif spacy_module == 'de':
+        nlp = de_core_news_sm.load()
+    elif spacy_module == 'fr':
+        nlp = fr_core_news_sm.load()
+    elif spacy_module == 'it':
+        nlp = it_core_news_sm.load()
+    elif spacy_module == 'pt':
+        nlp = pt_core_news_sm.load()
+    else:
+        raise ValueError(f'Unsupported language {spacy_module}')
+    return nlp
+
+
+@memoize
+def _hunspell(hunspell_file):
+    print("Loading hunspell dictionary '", hunspell_file, "'")
+    hunspell_folder = '/usr/share/hunspell'
+    return hunspell.HunSpell(f'{hunspell_folder}/{hunspell_file}.dic',
+                             f'{hunspell_folder}/{hunspell_file}.aff')
 
 
 class Spellcheck:
-
     """Spell check pipeline"""
+
+    _langs = {
+        'en': ['en', 'en_US'],
+        'es': ['es', 'es_ES'],
+        'de': ['de', 'de_DE'],
+        'fr': ['fr', 'fr_FR'],
+        'it': ['it', 'it_IT'],
+        'pt': ['pt', 'pt_PT'],
+        'gl': ['es', 'gl_ES'],
+        'ca': ['es', 'ca_ES'],
+    }
+
+    @classmethod
+    def _tokenizer(cls, lang):
+        """Get the tokenizer for the specified lang"""
+        lang_info = cls._langs.get(lang, None)
+        if lang_info is None:
+            return None
+        return _nlp(lang_info[0]).tokenizer
+
+    @classmethod
+    def _checker(cls, lang):
+        """Get the spell checker for the specified lang"""
+        lang_info = cls._langs.get(lang, None)
+        if lang_info is None:
+            return None
+        return _hunspell(lang_info[1])
+
     def __init__(self):
-        """Load the hunspell dictionaries"""
-        self.lang = {
-            'en': hunspell.HunSpell('/usr/share/hunspell/en_US.dic', '/usr/share/hunspell/en_US.aff'),
-            'es': hunspell.HunSpell('/usr/share/hunspell/es_ES.dic', '/usr/share/hunspell/es_ES.aff'),
-            'de': hunspell.HunSpell('/usr/share/hunspell/de_DE.dic', '/usr/share/hunspell/de_DE.aff'),
-            'fr': hunspell.HunSpell('/usr/share/hunspell/fr_FR.dic', '/usr/share/hunspell/fr_FR.aff'),
-            'it': hunspell.HunSpell('/usr/share/hunspell/it_IT.dic', '/usr/share/hunspell/it_IT.aff'),
-        }
+        """Preload all dictionaries to avoid first query delays"""
+        for lang in Spellcheck._langs:
+            Spellcheck._tokenizer(lang)
+            Spellcheck._checker(lang)
 
     def __call__(self, sentences):
-        """Return spell checked terms"""
-        terms = list()
-
-        def check_term(term, checker):
-            # Skip uppercased words that can be places, names, etc.
-            if term[0].isupper() or checker.spell(term):
+        """Generate spell checked terms"""
+        def best_fit(term, checker):
+            suggest = checker(term)
+            if len(suggest) <= 0:
                 return term
-            suggest = checker.suggest(term)
-            if len(suggest) > 0:
-                return suggest[0]
+            for suggestion in suggest[:3]:
+                if textdistance.jaro.distance(term, suggestion) <= 2:
+                    return suggestion
             return term
 
+        def terms_of(sentence, lang):
+            """Splits sentence into lemmas"""
+            # Make sure we support the language
+            checker = Spellcheck._checker(lang)
+            tokenizer = Spellcheck._tokenizer(lang)
+            if checker is None or tokenizer is None:
+                return None
+            # Lemmatize skipping stop words
+            # or short words (<= 2 characters)
+            doc = tokenizer(sentence)
+            tokens = (token for token in doc if not token.is_stop
+                      and not token.is_punct and len(token.norm_) > 2)
+            # Do spell checking on lemmas (mispelled words
+            # don't have a lemma, they drop through
+            # the previous step)
+            words = (token.text if
+                     (token.text[0].isupper() or checker.spell(token.norm_))
+                     else best_fit(token.text, checker.suggest)
+                     for token in tokens)
+            # Do a second pass to lemmatize corrected words
+            doc = tokenizer(' '.join(words))
+            words = ((token.text if token.text[0].isupper() else token.lemma_)
+                     for token in doc if not token.is_stop
+                     and not token.is_punct and len(token.norm_) > 2)
+            return dict(Counter(word.lower() for word in words))
+
         for sentence in sentences:
-            lang = sentence['lang']
             text = sentence['text']
-            checker = self.lang.get(lang, None)
-            if checker is None:
-                terms.append(text)
-                continue
-            tokens = (check_term(term, checker)
-                for term in re.findall(r'\w+', text))
-            terms.append(' '.join(tokens))
-        return terms
+            lang = sentence['lang']
+            yield terms_of(text, lang)
+
 
 spellcheck = Spellcheck()
-
 
 # Requests schema
 schema = {
@@ -116,8 +221,12 @@ schema = {
             'items': {
                 'type': 'object',
                 'properties': {
-                    'lang': {'type': 'string'},
-                    'text': {'type': 'string'}
+                    'lang': {
+                        'type': 'string'
+                    },
+                    'text': {
+                        'type': 'string'
+                    }
                 },
                 'required': ['lang', 'text']
             }
@@ -126,12 +235,14 @@ schema = {
     'required': ['sentences']
 }
 
+
+#pylint: disable=dangerous-default-value,redefined-outer-name
 def validate(item, schema=schema):
     """Validate item with json schema"""
     try:
         jsonschema.validate(instance=item, schema=schema)
         return True
-    except jsonschema.ValidationError as err:
+    except jsonschema.ValidationError:
         return False
 
 
@@ -140,6 +251,7 @@ def verify_token(token):
     """Only the MODEL_TOKEN is currently supported"""
     if token == MODEL_TOKEN:
         return 'admin'
+    return None
 
 
 @app.route('/healthz')
@@ -163,18 +275,31 @@ def healthz():
 
 @app.route('/spec')
 def spec():
+    """Return swagger spec for this API"""
     swag = swagger(app)
     swag['info']['title'] = 'Sentiment Analyzer'
     swag['securityDefinitions'] = {
-      'Bearer': {
-        'type': 'apiKey',
-        'name': 'Authorization',
-        'in': 'header',
-      }
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+        }
     }
     swag['host'] = request.host
     swag['schemes'] = [request.scheme]
     return jsonify(swag)
+
+
+def make_stream_response(generator, fieldname):
+    """Make a streaming response from a generator"""
+    def stream(sep=''):
+        yield '{"%s":[' % fieldname
+        for item in generator:
+            yield ''.join((sep, json.dumps(item)))
+            sep = ','
+        yield ']}'
+
+    return Response(stream(), mimetype='application/json')
 
 
 @app.route('/api/sentiment', methods=['POST'])
@@ -244,17 +369,17 @@ def sentiment():
     if not request.json or not validate(request.json):
         return make_response(jsonify({'error': 'Invalid input'}), 400)
     sentences = tuple(item['text'] for item in request.json['sentences'])
-    return jsonify({'sentiment': pipeline(sentences).tolist() })
+    return make_stream_response(pipeline(sentences), 'scores')
 
 
-@app.route('/api/spell', methods=['POST'])
+@app.route('/api/terms', methods=['POST'])
 @auth.login_required
-def spell():
+def terms():
     """
     Spell check input sentences
     ---
     tags:
-    - spelling
+    - terms
     parameters:
     - in: body
       name: body
@@ -266,13 +391,15 @@ def spell():
       200:
         description: ok
         schema:
-          id: spell
+          id: terms
           type: object
           properties:
-            spell:
+            terms:
               type: array
               items:
-                type: string
+                type: object
+                additionalProperties:
+                    type: integer
       400:
         description: Invalid input
         schema:
@@ -284,21 +411,23 @@ def spell():
     """
     if not request.json or not validate(request.json):
         return make_response(jsonify({'error': 'Invalid input'}), 400)
-    sentences = request.json['sentences']
-    return jsonify({'spell': spellcheck(sentences)})
+    sentences = tuple(request.json['sentences'])
+    return make_stream_response(spellcheck(sentences), 'terms')
 
 
+#pylint: disable=unused-argument
 @app.errorhandler(404)
 def not_found(error):
+    """Default 404 handler"""
     return make_response(jsonify({'error': 'Not Found'}), 404)
 
 
 @auth.error_handler
 def auth_error(status):
+    """Default error handler"""
     return make_response(jsonify({'error': 'Invalid credentials'}), status)
 
 
 if __name__ == '__main__':
     print(f"USE BEARER TOKEN '{MODEL_TOKEN}'")
     app.run(host="0.0.0.0", port=MODEL_PORT, debug=MODEL_DEBUG)
-
