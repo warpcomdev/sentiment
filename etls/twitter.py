@@ -332,4 +332,10 @@ class UserData:
         users['day'] = users['day'].dt.date
         users = users.set_index(['author_id', 'day'])
         # Join users with tweet count
-        return users.join(tweets, rsuffix='_tweet')
+        if len(tweets.index) > 0:
+            return users.join(tweets, rsuffix='_tweet')
+	# If the tweets df is empty. join would fail.
+        # In that case, we just extend the users df with null columns.
+        for col in tweets.columns:
+            users[col] = None
+        return users
