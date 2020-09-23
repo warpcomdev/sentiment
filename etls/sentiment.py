@@ -129,21 +129,41 @@ class Api:
     @staticmethod
     def normalize(cleaned: pd.DataFrame) -> pd.DataFrame:
         """Uses 'created_at', 'impact', 'score' and 'termcount'
-        to generate 'hour', 'pos', 'neg', 'neutral'"""
+        to generate:
+        - 'hour': Time of message rounded to hour below.
+        - 'pos': Positive impacts including the term.
+        - 'neg': Negative impacts including the term.
+        - 'neutral': Neutral impacts including the term.
+        - 'impact_per_term': impact / number of terms in message.
+        - 'pos_per_term': pos / number of terms in message.
+        - 'neg_per_term': neg / number of terms in message.
+        - 'neutral_per_term': Neutral / number of terms in message.
+        """
         # Round to the closest hour
         cleaned['hour'] = pd.to_datetime(
             cleaned['created_at']).apply(lambda dt: datetime.datetime(
                 dt.year, dt.month, dt.day, dt.hour, 0))
+        # Normalize impact dividing by number of terms
+        cleaned['impact_per_term'] = cleaned['impact'] / cleaned['termcount']
+        # Split impact amongst pos, neg and neutral
+        details = {
+            'pos': ('impact', 1),
+            'neg': ('impact', -1),
+            'neutral': ('impact', 0),
+            'pos_per_term': ('impact_per_term', 1),
+            'neg_per_term': ('impact_per_term', -1),
+            'neutral_per_term': ('impact_per_term', 0),
+        }
+        for detail, (impact, score) in details.items():
+            cleaned[detail] = cleaned[impact] * (cleaned['score'] == score)
         # Explode terms, one per line
         cleaned = cleaned.explode('terms')
-        # Normalize impact dividing by number of terms
-        cleaned['impact'] = cleaned['impact'] / cleaned['termcount']
-        # Split impact amongst pos, neg and neutral
-        cleaned['pos'] = cleaned['impact'] * (cleaned['score'] > 0)
-        cleaned['neg'] = cleaned['impact'] * (cleaned['score'] < 0)
-        cleaned['neutral'] = cleaned['impact'] * (cleaned['score'] == 0)
         # Pivot the terms cell into two columns,
         # and concatenate with the terms series
         pivot = cleaned['terms'].apply(pd.Series)
         cleaned = pd.concat([cleaned.drop(['terms'], axis=1), pivot], axis=1)
-        return cleaned
+        # Aggregate by unique fields (date, lang, term)
+        unique = ['hour', 'lang', 'term']
+        agg = {'impact': 'sum', 'impact_per_term': 'sum', 'termcount': 'sum'}
+        agg.update({k: 'sum' for k in details})
+        return cleaned.groupby(unique).agg(agg)
