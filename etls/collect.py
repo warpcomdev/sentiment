@@ -104,7 +104,6 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
     norms['nps_per_term'] = norms['pos_per_term'] - norms['neg_per_term']
     norms['nps'] = norms['pos'] - norms['neg']
     norms = norms.set_index(['source', 'day', 'hour', 'lang', 'term'])
-    norms = norms.reset_index()
     pangres.upsert(engine,
                    df=norms,
                    table_name=table,
