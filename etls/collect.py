@@ -12,6 +12,7 @@ import pangres
 import pandas as pd
 from dotenv import load_dotenv
 import twitter
+import sentiment
 
 
 def build_postgres_uri() -> str:
@@ -59,6 +60,61 @@ def upsert_user_data(engine: sqlalchemy.engine, api: twitter.Api,
                    adapt_dtype_of_empty_db_columns=False)
 
 
+def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
+                      sent_api: sentiment.Api, terms: Sequence[str],
+                      screen_names: Sequence[str], schema: Optional[str],
+                      table: str):
+    """Upsert user data into database"""
+    logging.info("upsert_tweet_data::terms = %s", terms)
+    logging.info("upsert_tweet_data::screen_names = %s", screen_names)
+    frames = list()
+    for frame in twitter.TweetData(days_back=3,
+                                   size=50).frames_to(api, terms,
+                                                      screen_names):
+        logging.info("upsert_tweet_data::len(frame) = %d", len(frame))
+        cleaned = sentiment.Api.clean(frame)
+        if len(cleaned) > 0:
+            sents = sent_api.sentiment(cleaned)
+            frames.append(sent_api.terms(sents))
+    # We must concatenate before normalizing, otherwise aggregations
+    # may yield several rows with the same keys
+    if len(frames) <= 0:
+        return
+    terms = pd.concat(frames, ignore_index=True)
+    norms = sentiment.Api.normalize(terms)
+    # Align information to database columns
+    columns = {
+        'day': 'day',
+        'lang': 'lang',
+        'term': 'term',
+        'termcount': 'repeat',
+        'pos_per_term': 'pos_per_term',
+        'neg_per_term': 'neg_per_term',
+        'neutral_per_term': 'neutral_per_term',
+        'pos': 'pos',
+        'neg': 'neg',
+        'neutral': 'neutral',
+    }
+    norms = norms.drop([col for col in norms.columns if col not in columns],
+                       axis=1).rename(columns=columns)
+    # Add source columns
+    norms['source'] = 'twitter'
+    norms['hour'] = norms['day'].dt.hour
+    norms['category'] = None
+    norms['nps_per_term'] = norms['pos_per_term'] - norms['neg_per_term']
+    norms['nps'] = norms['pos'] - norms['neg']
+    norms = norms.set_index(['source', 'day', 'hour', 'lang', 'term'])
+    norms = norms.reset_index()
+    pangres.upsert(engine,
+                   df=norms,
+                   table_name=table,
+                   schema=schema,
+                   if_row_exists='update',
+                   create_schema=False,
+                   add_new_columns=False,
+                   adapt_dtype_of_empty_db_columns=False)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, force=True)
     ETL_CONFIG_PATH = os.path.realpath(os.getenv('ETL_CONFIG_PATH') or '.')
@@ -74,6 +130,7 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     try:
+        SENT_API = sentiment.Api()
         API = twitter.Api()
         SCREEN_NAMES = pd.read_csv(
             os.path.join(ETL_CONFIG_PATH, 'screen_names.csv'))
@@ -85,6 +142,9 @@ if __name__ == "__main__":
     try:
         upsert_user_data(ENGINE, API, SCREEN_NAMES['screen_names'],
                          os.getenv('POSTGRES_SCHEMA'), 'cx_engagement')
+        upsert_tweet_data(ENGINE, API, SENT_API, TERMS['terms'],
+                          SCREEN_NAMES['screen_names'],
+                          os.getenv('POSTGRES_SCHEMA'), 'cx_sentiment')
         logging.info("OK - Data inserted")
     except Exception as err:
         logging.error("KO - Failed to upsert data: %s", err)

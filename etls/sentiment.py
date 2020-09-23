@@ -130,7 +130,7 @@ class Api:
     def normalize(cleaned: pd.DataFrame) -> pd.DataFrame:
         """Uses 'created_at', 'impact', 'score' and 'termcount'
         to generate:
-        - 'hour': Time of message rounded to hour below.
+        - 'day': Time of message rounded to hour below.
         - 'pos': Positive impacts including the term.
         - 'neg': Negative impacts including the term.
         - 'neutral': Neutral impacts including the term.
@@ -140,7 +140,7 @@ class Api:
         - 'neutral_per_term': Neutral / number of terms in message.
         """
         # Round to the closest hour
-        cleaned['hour'] = pd.to_datetime(
+        cleaned['day'] = pd.to_datetime(
             cleaned['created_at']).apply(lambda dt: datetime.datetime(
                 dt.year, dt.month, dt.day, dt.hour, 0))
         # Normalize impact dividing by number of terms
@@ -162,8 +162,8 @@ class Api:
         # and concatenate with the terms series
         pivot = cleaned['terms'].apply(pd.Series)
         cleaned = pd.concat([cleaned.drop(['terms'], axis=1), pivot], axis=1)
-        # Aggregate by unique fields (date, lang, term)
-        unique = ['hour', 'lang', 'term']
+        # Aggregate by unique fields (day, lang, term)
+        unique = ['day', 'lang', 'term']
         agg = {'impact': 'sum', 'impact_per_term': 'sum', 'termcount': 'sum'}
         agg.update({k: 'sum' for k in details})
-        return cleaned.groupby(unique).agg(agg)
+        return cleaned.groupby(unique).agg(agg).reset_index()
