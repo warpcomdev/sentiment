@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Twitter API v2 utilities"""
 
-from typing import Sequence, Optional, Mapping, Dict, Any, Generator
+from typing import Sequence, Optional, Mapping, Dict, Any, Generator, Iterable
 
 import os
 import itertools
@@ -41,7 +41,8 @@ class Api:
         logging.info("Api::query::url = '%s'", url)
         resp = requests.get(url, headers=self.headers, params=params)
         if resp.status_code != 200:
-            raise ValueError("Api::query got response [%s] %s" % (resp.status_code, resp.text))
+            raise ValueError("Api::query got response [%s] %s" %
+                             (resp.status_code, resp.text))
         return resp.json()
 
 
@@ -260,6 +261,18 @@ class TweetData:
         self.model = Model(TweetData._columns, TweetData._packed,
                            TweetData._referenced)
 
+    @staticmethod
+    def _process(
+        frames: Iterable[pd.DataFrame]
+    ) -> Generator[pd.DataFrame, None, None]:
+        """Post-process frames before yielding them"""
+        for frame in frames:
+            # Remove retweets
+            frame = frame[~frame['text'].str.startswith('RT ')]
+            # Calculate impact
+            frame['impact'] = frame['retweet_count'] + frame['like_count'] + 1
+            yield frame
+
     def frames_from(
         self,
         api: Api,
@@ -267,7 +280,8 @@ class TweetData:
     ) -> Generator[pd.DataFrame, None, None]:
         """Generate dataframes from tweets sent from given accounts"""
         params = self.build_params(TweetData.build_query_from(screen_names))
-        return self.model.follow(api, TweetData._api_path, params)
+        return TweetData._process(
+            self.model.follow(api, TweetData._api_path, params))
 
     def frames_to(
         self,
@@ -278,7 +292,8 @@ class TweetData:
         """Generate dataframes from tweets sent to given accounts"""
         params = self.build_params(
             TweetData.build_query_to(terms, screen_names))
-        return self.model.follow(api, TweetData._api_path, params)
+        return TweetData._process(
+            self.model.follow(api, TweetData._api_path, params))
 
 
 class UserData:
@@ -334,7 +349,7 @@ class UserData:
         # Join users with tweet count
         if len(tweets.index) > 0:
             return users.join(tweets, rsuffix='_tweet')
-	# If the tweets df is empty. join would fail.
+        # If the tweets df is empty, join would fail.
         # In that case, we just extend the users df with null columns.
         for col in tweets.columns:
             users[col] = None

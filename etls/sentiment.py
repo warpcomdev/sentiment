@@ -6,8 +6,10 @@ from typing import Optional, Dict, Mapping
 import os
 import re
 from collections import defaultdict
+import datetime
 
 import pandas as pd
+import requests
 import preprocessor
 preprocessor.set_options(
     preprocessor.OPT.URL,  #pylint: disable=no-member
@@ -51,6 +53,7 @@ class Api:
                  sentiment_token: Optional[str] = None):
         self.sentiment_url = sentiment_url or os.getenv('SENTIMENT_URL')
         self.sentiment_token = sentiment_token or os.getenv('SENTIMENT_TOKEN')
+        self.headers = {'Authorization': f'Bearer {self.sentiment_token}'}
 
     @staticmethod
     def clean_tweet(lang: str, tweet: str) -> str:
@@ -74,4 +77,73 @@ class Api:
         if mispell_all is not None:
             for wrong, right in mispell_all.items():
                 cleaned = cleaned.replace(wrong, right)
+        return cleaned
+
+    @staticmethod
+    def clean(tweets: pd.DataFrame) -> pd.DataFrame:
+        """uses 'lang' and 'text' to generate 'clean'"""
+        spacy_langs = ('es', 'en', 'de', 'fr', 'it', 'pt', 'gl', 'ca')
+        # Drop retweets
+        tweets = tweets[~tweets['text'].str.startswith('RT ')]
+        # Drop unsupported languages
+        tweets = tweets[tweets['lang'].isin(spacy_langs)]
+        # Reindex dataframe
+        tweets = tweets.reset_index().drop('index', axis=1)
+        tweets['clean'] = tweets.apply(
+            lambda row: {
+                'lang': row['lang'],
+                'text': Api.clean_tweet(row['lang'], row['text']),
+            },
+            axis=1)
+        return tweets
+
+    def sentiment(self, cleaned: pd.DataFrame) -> pd.DataFrame:
+        """Uses 'clean' to generate 'score'"""
+        request_url = f'{self.sentiment_url}/api/sentiment'
+        body = {'sentences': cleaned['clean'].tolist()}
+        resp = requests.post(request_url, headers=self.headers, json=body)
+        # Transform score into polarity (-1, 0, 1)
+        average = (sum(i * x for i, x in enumerate(item, 1))
+                   for item in resp.json()['scores'])
+        score = tuple(1 if s >= 3.66 else -1 if s < 2.33 else 0
+                      for s in average)
+        cleaned = cleaned.assign(score=score)
+        return cleaned
+
+    def terms(self, cleaned: pd.DataFrame) -> pd.DataFrame:
+        """Uses 'clean' to generate 'terms', 'termcount'"""
+        request_url = f'{self.sentiment_url}/api/terms'
+        body = {'sentences': cleaned['clean'].tolist()}
+        resp = requests.post(request_url, headers=self.headers, json=body)
+        cleaned = cleaned.assign(terms=resp.json()['terms'])
+        # Turn dict o terms into item list
+        cleaned['terms'] = cleaned['terms'].apply(lambda d: tuple({
+            'term': k,
+            'repeat': v
+        } for k, v in d.items()))
+        # Remove tweets without terms
+        cleaned['termcount'] = cleaned['terms'].map(len)
+        cleaned = cleaned[cleaned['termcount'] > 0].reset_index()
+        return cleaned
+
+    @staticmethod
+    def normalize(cleaned: pd.DataFrame) -> pd.DataFrame:
+        """Uses 'created_at', 'impact', 'score' and 'termcount'
+        to generate 'hour', 'pos', 'neg', 'neutral'"""
+        # Round to the closest hour
+        cleaned['hour'] = pd.to_datetime(
+            cleaned['created_at']).apply(lambda dt: datetime.datetime(
+                dt.year, dt.month, dt.day, dt.hour, 0))
+        # Explode terms, one per line
+        cleaned = cleaned.explode('terms')
+        # Normalize impact dividing by number of terms
+        cleaned['impact'] = cleaned['impact'] / cleaned['termcount']
+        # Split impact amongst pos, neg and neutral
+        cleaned['pos'] = cleaned['impact'] * (cleaned['score'] > 0)
+        cleaned['neg'] = cleaned['impact'] * (cleaned['score'] < 0)
+        cleaned['neutral'] = cleaned['impact'] * (cleaned['score'] == 0)
+        # Pivot the terms cell into two columns,
+        # and concatenate with the terms series
+        pivot = cleaned['terms'].apply(pd.Series)
+        cleaned = pd.concat([cleaned.drop(['terms'], axis=1), pivot], axis=1)
         return cleaned
