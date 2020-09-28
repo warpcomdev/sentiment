@@ -39,11 +39,11 @@ class Api:
         """Perform HTTP query and return json reply"""
         url = f'{self.api_url}{path}'
         logging.info("Api::query::url = '%s'", url)
-        resp = requests.get(url, headers=self.headers, params=params)
-        if resp.status_code != 200:
-            raise ValueError("Api::query got response [%s] %s" %
-                             (resp.status_code, resp.text))
-        return resp.json()
+        with requests.get(url, headers=self.headers, params=params) as resp:
+            if resp.status_code != 200:
+                raise ValueError("Api::query got response [%s] %s" %
+                                 (resp.status_code, resp.text))
+            return resp.json()
 
 
 class Reference:

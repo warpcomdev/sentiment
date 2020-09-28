@@ -99,23 +99,23 @@ class Api:
 
     def sentiment(self, cleaned: pd.DataFrame) -> pd.DataFrame:
         """Uses 'clean' to generate 'score'"""
-        request_url = f'{self.sentiment_url}/api/sentiment'
         body = {'sentences': cleaned['clean'].tolist()}
-        resp = requests.post(request_url, headers=self.headers, json=body)
-        # Transform score into polarity (-1, 0, 1)
-        average = (sum(i * x for i, x in enumerate(item, 1))
-                   for item in resp.json()['scores'])
-        score = tuple(1 if s >= 3.66 else -1 if s < 2.33 else 0
-                      for s in average)
-        cleaned = cleaned.assign(score=score)
+        url = f'{self.sentiment_url}/api/sentiment'
+        with requests.post(url, headers=self.headers, json=body) as resp:
+            # Transform score into polarity (-1, 0, 1)
+            average = (sum(i * x for i, x in enumerate(item, 1))
+                       for item in resp.json()['scores'])
+            score = tuple(1 if s >= 3.66 else -1 if s < 2.33 else 0
+                          for s in average)
+            cleaned = cleaned.assign(score=score)
         return cleaned
 
     def terms(self, cleaned: pd.DataFrame) -> pd.DataFrame:
         """Uses 'clean' to generate 'terms', 'termcount'"""
-        request_url = f'{self.sentiment_url}/api/terms'
         body = {'sentences': cleaned['clean'].tolist()}
-        resp = requests.post(request_url, headers=self.headers, json=body)
-        cleaned = cleaned.assign(terms=resp.json()['terms'])
+        url = f'{self.sentiment_url}/api/terms'
+        with requests.post(url, headers=self.headers, json=body) as resp:
+            cleaned = cleaned.assign(terms=resp.json()['terms'])
         # Turn dict o terms into item list
         cleaned['terms'] = cleaned['terms'].apply(lambda d: tuple({
             'term': k,
@@ -164,6 +164,7 @@ class Api:
         cleaned = pd.concat([cleaned.drop(['terms'], axis=1), pivot], axis=1)
         # Aggregate by unique fields (day, lang, term)
         unique = ['day', 'lang', 'term']
-        agg = {'impact': 'sum', 'impact_per_term': 'sum', 'termcount': 'sum'}
+        agg = {'impact': 'sum', 'impact_per_term': 'sum', 'repeat': 'sum', 'termcount': 'sum'}
         agg.update({k: 'sum' for k in details})
         return cleaned.groupby(unique).agg(agg).reset_index()
+

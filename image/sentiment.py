@@ -185,6 +185,11 @@ class Spellcheck:
             tokenizer = Spellcheck._tokenizer(lang)
             if checker is None or tokenizer is None:
                 return None
+            # Remove variation selectors, that confuse the call to isupper()
+            # because they are things that modify display of emojis, not actual
+            # characters. See:
+            # https://en.wikipedia.org/wiki/Variation_Selectors_(Unicode_block)
+            sentence = sentence.replace('\ufe0f', '').replace('\ufe0e', '')
             # Lemmatize skipping stop words
             # or short words (<= 2 characters)
             doc = tokenizer(sentence)

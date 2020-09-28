@@ -87,7 +87,7 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
         'day': 'day',
         'lang': 'lang',
         'term': 'term',
-        'termcount': 'repeat',
+        'repeat': 'repeat',
         'pos_per_term': 'pos_per_term',
         'neg_per_term': 'neg_per_term',
         'neutral_per_term': 'neutral_per_term',
@@ -115,13 +115,19 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, force=True)
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    root.addHandler(handler)
+
     ETL_CONFIG_PATH = os.path.realpath(os.getenv('ETL_CONFIG_PATH') or '.')
     logging.info("READING CONFIG FROM '%s'", ETL_CONFIG_PATH)
     load_dotenv(dotenv_path=os.path.join(ETL_CONFIG_PATH, '.env'))
 
     #pylint: disable=broad-except
-    ENGINE = sqlalchemy.create_engine(build_postgres_uri())
+    ENGINE = sqlalchemy.create_engine(build_postgres_uri(),
+        pool_use_lifo=True, pool_pre_ping=True)
     try:
         ENGINE.connect()
     except Exception as err:
@@ -145,6 +151,7 @@ if __name__ == "__main__":
                           SCREEN_NAMES['screen_names'],
                           os.getenv('POSTGRES_SCHEMA'), 'cx_sentiment')
         logging.info("OK - Data inserted")
-    except Exception as err:
-        logging.error("KO - Failed to upsert data: %s", err)
+    except Exception:
+        logging.exception("KO - Failed to upsert data")
         sys.exit(-1)
+
