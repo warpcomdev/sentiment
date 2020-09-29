@@ -68,7 +68,7 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
     logging.info("upsert_tweet_data::terms = %s", terms)
     logging.info("upsert_tweet_data::screen_names = %s", screen_names)
     frames = list()
-    for frame in twitter.TweetData(days_back=3,
+    for frame in twitter.TweetData(days_back=2,
                                    size=50).frames_to(api, terms,
                                                       screen_names):
         logging.info("upsert_tweet_data::len(frame) = %d", len(frame))

@@ -88,13 +88,14 @@ class Api:
         # Drop unsupported languages
         tweets = tweets[tweets['lang'].isin(spacy_langs)]
         # Reindex dataframe
-        tweets = tweets.reset_index().drop('index', axis=1)
-        tweets['clean'] = tweets.apply(
-            lambda row: {
-                'lang': row['lang'],
-                'text': Api.clean_tweet(row['lang'], row['text']),
-            },
-            axis=1)
+        if len(tweets) > 0:
+            tweets = tweets.reset_index().drop('index', axis=1)
+            tweets['clean'] = tweets.apply(
+                lambda row: {
+                    'lang': row['lang'],
+                    'text': Api.clean_tweet(row['lang'], row['text']),
+                },
+                axis=1)
         return tweets
 
     def sentiment(self, cleaned: pd.DataFrame) -> pd.DataFrame:
