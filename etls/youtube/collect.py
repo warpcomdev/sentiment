@@ -1,0 +1,324 @@
+#!/usr/bin/env python3
+"""Collect youtube analytics statistics"""
+
+import sys
+import os
+import json
+import logging
+import io
+from datetime import datetime, timezone, timedelta
+from multiprocessing.pool import ThreadPool
+from collections import defaultdict
+from typing import Sequence, Mapping, Any
+
+import requests
+import urllib3
+import pandas as pd
+from dotenv import load_dotenv
+
+import google.oauth2.credentials
+import google.auth.transport.urllib3
+import googleapiclient.discovery
+
+import sqlalchemy
+import pangres
+
+
+def build_postgres_uri() -> str:
+    """Build connection URL"""
+    user = os.getenv("POSTGRES_USER")
+    password = os.getenv("POSTGRES_PASS")
+    host = os.getenv("POSTGRES_HOST")
+    port = os.getenv("POSTGRES_PORT")
+    dbname = os.getenv("POSTGRES_DB")
+    return f'postgresql://{user}:{password}@{host}:{port}/{dbname}'
+
+
+class Api:
+    """Youtube API analytics wrapper"""
+    def __init__(self, cred_filename: str):
+        """Load the provided credential file"""
+        with open(cred_filename, "r", encoding="utf-8") as infile:
+            credentials = google.oauth2.credentials.Credentials(
+                **json.load(infile))
+            with urllib3.PoolManager() as http:
+                request = google.auth.transport.urllib3.Request(http)
+                credentials.refresh(request)
+        self._credentials = credentials
+        self._apis: Mapping[str, Any] = defaultdict(dict)
+
+    def service(self, api: str, version: str):
+        """Return a service API object (possibly cached)"""
+        last = self._apis[api].get(version, None)
+        if last is None:
+            last = googleapiclient.discovery.build(
+                api,
+                version,
+                credentials=self._credentials,
+                cache_discovery=False)
+            self._apis[api][version] = last
+        return last
+
+    def token(self):
+        """Return current auth bearer token"""
+        return self._credentials.token
+
+
+def explode_df_column(frame: pd.DataFrame, colname: str) -> pd.DataFrame:
+    """Explode a dict-like column into additional columns"""
+    return pd.concat(
+        [frame.drop([colname], axis=1), frame[colname].apply(pd.Series)],
+        axis=1)
+
+
+def channel_stats(api: Api) -> pd.DataFrame:
+    """Get channel basic stats"""
+    # Youtube data API:
+    # See https://developers.google.com/youtube/v3/docs/subscriptions/list
+    service = api.service('youtube', 'v3')
+    stats = service.channels().list(part="statistics,brandingSettings",
+                                    mine=True).execute()
+
+    items = pd.DataFrame(stats['items'])
+    logging.info("channel_stats::items = %s", items.columns)
+    # extract inner 'brandingSettings.channel' column
+    items['channel'] = items['brandingSettings'].apply(
+        lambda item: item['channel'])
+    items = items.drop('brandingSettings', axis=1)
+    # explode 'statistics' and 'channel' dict into columns
+    items = explode_df_column(items, 'channel')
+    items = explode_df_column(items, 'statistics')
+    items = items.set_index('id')
+    items['subscribedCount'] = None
+
+    for channel in items.index:
+        subs = service.subscriptions().list(part="id",
+                                            channelId=channel).execute()
+        # Solo nos interesan los totalResults
+        logging.info("channel_stats::subscriptions[%s] = %s", channel,
+                     items.columns)
+        items.at[channel, 'subscribedCount'] = subs['pageInfo']['totalResults']
+
+    logging.info("channel_stats::return = %s", items.columns)
+    return items
+
+
+def get_jobs(api: Api, report_types: Sequence[str]) -> pd.DataFrame:
+    """Get jobs for the given report types"""
+
+    service = api.service('youtubereporting', 'v1')
+    # Get available report types
+    rtypes = {
+        rtype['id']: rtype['name']
+        for rtype in service.reportTypes().list().execute().get(
+            'reportTypes', tuple())
+    }
+    logging.info("get_jobs::rtypes = %s", rtypes.keys())
+
+    # Get scheduled jobs
+    jobs = {
+        job['reportTypeId']: job
+        for job in service.jobs().list().execute().get('jobs', tuple())
+    }
+    logging.info("get_jobs::jobs = %s", jobs.keys())
+
+    # Build new scheduled jobs for any reportType not already present
+    for missing in (rtype for rtype in report_types if not rtype in jobs):
+        logging.info("get_jobs::missing = %s", missing)
+        service.jobs().create(
+            body=dict(reportTypeId=missing, name=rtypes[missing])).execute()
+
+    # Return already available jobs
+    available = [job for key, job in jobs.items() if key in report_types]
+    if not available:
+        return None
+    result = pd.DataFrame(available)
+    logging.info("get_jobs::return = %s", result.columns)
+    return result
+
+
+def get_reports(api: Api, jobs: Sequence[str], days=2) -> pd.DataFrame:
+    """Get reports generated by given job ids, since given days"""
+
+    service = api.service('youtubereporting', 'v1')
+    after = (datetime.now(timezone.utc).astimezone() -
+             timedelta(days=days)).isoformat('T')
+
+    reports = list()
+    for job_id in jobs:
+        logging.info("get_reports::job_id = %s", job_id)
+        reports.extend(service.jobs().reports().list(
+            jobId=job_id,
+            createdAfter=after).execute().get('reports', tuple()))
+
+    if not reports:
+        return None
+    result = pd.DataFrame(reports)
+    logging.info("get_jobs::return = %s", result.columns)
+    return result
+
+
+def iterable_to_stream(iterable, buffer_size=io.DEFAULT_BUFFER_SIZE):
+    """
+    Lets you use an iterable (e.g. a generator) that yields bytestrings as a read-only
+    input stream.
+
+    The stream implements Python 3's newer I/O API (available in Python 2's io module).
+    For efficiency, the stream is buffered.
+    """
+    class IterStream(io.RawIOBase):
+        """Iterator-based stream"""
+        def __init__(self):
+            """Build empty stream object"""
+            super().__init__()
+            self.leftover = None
+
+        def readable(self):
+            """Stream is read-only"""
+            return True
+
+        def readinto(self, b):
+            """Implements stream, reads bytes into given buffer"""
+            try:
+                buflen = len(b)  # We're supposed to return at most this much
+                chunk = self.leftover or next(iterable)
+                output, self.leftover = chunk[:buflen], chunk[buflen:]
+                b[:len(output)] = output
+                return len(output)
+            except StopIteration:
+                return 0  # indicate EOF
+
+    return io.BufferedReader(IterStream(), buffer_size=buffer_size)
+
+
+def download_reports(api: Api, urls: Sequence[str], threads=4) -> pd.DataFrame:
+    """Download reports given by downloadUrl"""
+    headers = {'Authorization': "Bearer %s" % api.token()}
+
+    def download(session, url, headers):
+        """Download single report"""
+        logging.info("get_jobs::download_reports::download(%s)", url)
+        with session.get(url, headers=headers, stream=True) as resp:
+            if resp.status_code < 200 or resp.status_code > 204:
+                raise ValueError("Failed to collect URL {}: {}".format(
+                    url, resp.status_code))
+            return pd.read_csv(iterable_to_stream(resp.iter_content()))
+
+    with requests.Session() as session:
+        with ThreadPool(threads) as tpool:
+            return pd.concat(tpool.map(
+                lambda url: download(session, url, headers), urls),
+                             axis=0,
+                             ignore_index=True)
+
+
+def upsert_engagement_data(stats: pd.DataFrame,
+                           engine: sqlalchemy.engine, schema: str,
+                           table: str,
+                           xlate_map: Mapping[str, str]) -> pd.DataFrame:
+    """Upsert engagement info. Returns normalized incoming dataframe"""
+
+    # Get channels and translate columns to names expected by database
+    xlate_map_keys = tuple(xlate_map.keys())
+    # channel_stats is indexed by channel ID
+    stats = stats.drop(
+        columns=[col for col in stats.columns if col not in xlate_map_keys])
+    stats = stats.rename(xlate_map, axis=1)
+    stats['source'] = 'youtube'
+    if not 'day' in stats.columns:
+        stats['day'] = datetime.now(
+            timezone.utc).astimezone().strftime('%Y-%m-%d')
+
+    if engine is not None:
+        pangres.upsert(engine,
+                       df=stats.set_index(['source', 'channel', 'day']),
+                       table_name=table,
+                       schema=schema,
+                       if_row_exists='update',
+                       create_schema=False,
+                       add_new_columns=False,
+                       adapt_dtype_of_empty_db_columns=False)
+
+    logging.info("upsert_engagement_data::return = %s", stats.columns)
+    return stats
+
+
+def upsert_channel_data(channels: pd.DataFrame,
+                        engine: sqlalchemy.engine, schema: str,
+                        table: str) -> pd.DataFrame:
+    """Upsert channel totals info. Return channel data."""
+    # Get channels and translate columns to names expected by database
+    channel_xlate_map = {
+        'subscriberCount': 'total_followers',
+        'subscribedCount': 'total_followed',
+        'viewCount': 'total_impressions',
+        'videoCount': 'total_posts',
+        'title': 'channel'
+    }
+    # channel_stats is indexed by channel ID
+    return upsert_engagement_data(channels, engine, schema, table,
+                                  channel_xlate_map)
+
+
+def upsert_basic_report_data(channels: pd.DataFrame, report: pd.DataFrame,
+                             engine: sqlalchemy.engine, schema: str,
+                             table: str) -> pd.DataFrame:
+    """Upsert basic report data"""
+    xlate_map = {
+        'date': 'day',
+        'channel': 'channel',
+        'views': 'daily_impressions',
+        'comments': 'daily_reply',
+        'likes': 'daily_likes',
+        'dislikes': 'daily_dislikes',
+    }
+
+    report = report.join(channels[['channel']], how='left', on='channel_id')
+    return upsert_engagement_data(report, engine, schema, table, xlate_map)
+
+
+if __name__ == "__main__":
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    root.addHandler(handler)
+
+    ETL_CONFIG_PATH = os.path.realpath(os.getenv('ETL_CONFIG_PATH') or '.')
+    logging.info("READING CONFIG FROM '%s'", ETL_CONFIG_PATH)
+    load_dotenv(dotenv_path=os.path.join(ETL_CONFIG_PATH, '.env'))
+
+    API = Api(sys.argv[1] if len(sys.argv) > 1 else 'credentials_turismo.json')
+    #pylint: disable=broad-except
+    ENGINE = sqlalchemy.create_engine(build_postgres_uri(),
+        pool_use_lifo=True, pool_pre_ping=True)
+    try:
+        ENGINE.connect()
+    except Exception as err:
+        logging.error("KO - Failed to connect to database: %s", err)
+        sys.exit(-1)
+
+    # Get and upsert channel data
+    CHANNELS = upsert_channel_data(channel_stats(API), ENGINE,
+                                   os.getenv('POSTGRES_SCHEMA') or 'default',
+                                   'cx_engagement')
+
+    # Get jobs with reportTypeId
+    JOBS = get_jobs(
+        API, ['channel_basic_a2', 'channel_demographics_a1']).set_index('id')
+    REPORTS = get_reports(API, JOBS.index).set_index('jobId').join(
+        JOBS['reportTypeId'])
+
+    # split amongst basic and demographic
+    REPORTS_BY_TYPE = {
+        'basic':
+        REPORTS[REPORTS['reportTypeId'] == 'channel_basic_a2'],
+        'demographics':
+        REPORTS[REPORTS['reportTypeId'] == 'channel_demographics_a1'],
+    }
+
+    # Get and upsert basic report data
+    BASIC = download_reports(API, REPORTS_BY_TYPE['basic']['downloadUrl'])
+    upsert_basic_report_data(CHANNELS, BASIC, ENGINE,
+                             os.getenv('POSTGRES_SCHEMA') or 'default',
+                             'cx_engagement')
