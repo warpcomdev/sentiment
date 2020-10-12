@@ -202,7 +202,10 @@ def download_reports(api: Api, urls: Sequence[str], threads=4) -> pd.DataFrame:
             if resp.status_code < 200 or resp.status_code > 204:
                 raise ValueError("Failed to collect URL {}: {}".format(
                     url, resp.status_code))
-            return pd.read_csv(iterable_to_stream(resp.iter_content()))
+            csv = pd.read_csv(iterable_to_stream(resp.iter_content()))
+            # Date format is YYYYMMDD, I need YYYY-MM-DD
+            csv['date'] = csv['date'].apply(lambda item: "%04d-%02d-%02d" % (item / 10000, (item % 10000)/100, item % 100))
+            return csv
 
     with requests.Session() as session:
         with ThreadPool(threads) as tpool:
@@ -231,7 +234,7 @@ def upsert_engagement_data(stats: pd.DataFrame,
 
     if engine is not None:
         pangres.upsert(engine,
-                       df=stats.set_index(['source', 'channel', 'day']),
+                       df=stats.groupby(by=['source', 'channel', 'day']).agg('sum'),
                        table_name=table,
                        schema=schema,
                        if_row_exists='update',
@@ -269,8 +272,8 @@ def upsert_basic_report_data(channels: pd.DataFrame, report: pd.DataFrame,
         'channel': 'channel',
         'views': 'daily_impressions',
         'comments': 'daily_reply',
-        'likes': 'daily_likes',
-        'dislikes': 'daily_dislikes',
+        'likes': 'daily_like',
+        'dislikes': 'daily_dislike',
     }
 
     report = report.join(channels[['channel']], how='left', on='channel_id')
