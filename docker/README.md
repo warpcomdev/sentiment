@@ -30,7 +30,7 @@ La aplicación se configura utilizando **variables de entorno**. A continuación
 Estas variables deben especificarse al ejecutar el contenedor, por ejemplo:
 
 ```bash
-docker run --rm -v /opt/sentiment:/var/cache/sentiment \
+docker run --rm -v /opt/sentiment/var:/var/cache/sentiment \
   -e MODEL_NAME=nlptown/bert-base-multilingual-uncased-sentiment \
   -e MODEL_CACHE_DIR=/var/cache/sentiment \
   -e MODEL_PORT=3000 \
@@ -41,7 +41,26 @@ docker run --rm -v /opt/sentiment:/var/cache/sentiment \
   sentiment:latest
 ```
 
-Con estos parámetros, la aplicación descargará el modelo a la ruta `/opt/sentiment` (montada dentro del contenedor en la ruta `/var/cahe/sentiment`), y escuchará peticiones en el puerto 3000.
+Alternativamente, estas variables pueden almacenarse en un fichero `.env`, y especificar únicamente la ruta a dicho fichero en la variable de entorno `MODEL_ENV_DIR`, por ejemplo:
+
+```bash
+cat > /opt/sentiment/etc/.env <<EOF
+MODEL_NAME=nlptown/bert-base-multilingual-uncased-sentiment
+MODEL_CACHE_DIR=/var/cache/sentiment
+MODEL_PORT=3000
+MODEL_TOKEN=...
+MODEL_PROXY=false
+MODEL_DEBUG=false
+EOF
+
+docker run --rm -v /opt/sentiment/var:/var/cache/sentiment \
+  -v /opt/sentiment/etc:/etc/sentiment:ro \
+  -e MODEL_ENV_DIR=/etc/sentiment \
+  -p 3000:3000 \
+  sentiment:latest
+```
+
+En cualquiera de los casos, con estos parámetros, la aplicación descargará el modelo a la ruta `/opt/sentiment` (montada dentro del contenedor en la ruta `/var/cahe/sentiment`), y escuchará peticiones en el puerto 3000.
 
 Las peticiones deberán enviarse con una cabecera `Authorization: Bearer ...` (utilizando el mismo tken que se haya especificado en la variable de entorno `MODEL_TOKEN`).
 
