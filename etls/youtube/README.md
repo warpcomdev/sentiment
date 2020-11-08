@@ -49,7 +49,7 @@ Los datos se almacenan en la base de datos especificada por el propietario del p
 
 ## Configuración
 
-La ETL de Youtube require que se proporcione un fichero de credenciales que se obtiene (en forma cifrada) iniciando sesión en la URL https://youtube.analytics.urbo2.es/. La ETL necesita que esas credenciales se descifren, para lo cual es necesario utilizar una clave secreta que está custodiada por los responsables de desrrollado de la ETL.
+La ETL de Youtube requiere que se proporcione un fichero de credenciales que se obtiene (en forma cifrada) iniciando sesión en la URL https://youtube.analytics.urbo2.es/. La ETL necesita que esas credenciales se descifren, para lo cual es necesario utilizar una clave secreta que está custodiada por los responsables de desrrollado de la ETL.
 
 Además de dicho fichero descifrado de claves, la aplicación utiliza varias variables de entorno:
 
