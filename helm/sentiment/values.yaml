@@ -35,8 +35,6 @@ env_dir: "/etc/sentiment"
 cache_dir: "/var/cache/sentiment"
 # Name of hugginface hub's model
 model: "nlptown/bert-base-multilingual-uncased-sentiment"
-# True if model is stored in pytorch format as opposed to tensorflow.
-isPyTorch: true
 # TCP port to listen on
 port: 3000
 # Bearer token for protected queries
@@ -44,8 +42,12 @@ token: "ThisIsYourBearerTokenKeepItSecret"
 
 # TLS settings for ingress
 tls:
+    # True para usar TLS en el ingress
     enabled: True
+    # True para crear el objeto Certificate de cert-manager
     create: True
+    # Nombre del issuer configurado con el operador de CertManager
     issuer: "letsencrypt-prod"
+    # Nombre del secreto donde se almacenará el certificado,
+    # por defecto coincide con el nombre de release Helm.
     secret: ""
-

@@ -68,7 +68,7 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
     logging.info("upsert_tweet_data::terms = %s", terms)
     logging.info("upsert_tweet_data::screen_names = %s", screen_names)
     frames = list()
-    for frame in twitter.TweetData(days_back=3,
+    for frame in twitter.TweetData(days_back=2,
                                    size=50).frames_to(api, terms,
                                                       screen_names):
         logging.info("upsert_tweet_data::len(frame) = %d", len(frame))
@@ -84,7 +84,9 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
 
     # HACK: Save tweet info
     tweets = terms[['id', 'created_at', 'clean', 'terms']]
-    tweets = pd.concat([tweets.drop(['created_at', 'clean'], axis=1), tweets['clean'].apply(pd.Series)], axis=1)
+    tweets = pd.concat(
+        [tweets.drop(['clean'], axis=1), tweets['clean'].apply(pd.Series)],
+        axis=1)
     tweets = tweets.set_index('id')
     pangres.upsert(engine,
                    df=tweets,
@@ -142,7 +144,8 @@ if __name__ == "__main__":
 
     #pylint: disable=broad-except
     ENGINE = sqlalchemy.create_engine(build_postgres_uri(),
-        pool_use_lifo=True, pool_pre_ping=True)
+                                      pool_use_lifo=True,
+                                      pool_pre_ping=True)
     try:
         ENGINE.connect()
     except Exception as err:
@@ -169,4 +172,3 @@ if __name__ == "__main__":
     except Exception:
         logging.exception("KO - Failed to upsert data")
         sys.exit(-1)
-

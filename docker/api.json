@@ -1,0 +1,193 @@
+{
+    "definitions": {
+        "error": {
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "error"
+            ]
+        },
+        "sentence": {
+            "properties": {
+                "lang": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "lang",
+                "text"
+            ]
+        },
+        "sentences": {
+            "properties": {
+                "sentences": {
+                    "description": "list of sentences",
+                    "items": {
+                        "$ref": "#/definitions/sentence"
+                    },
+                    "type": "array"
+                }
+            },
+            "required": [
+                "sentences"
+            ]
+        },
+        "terms": {
+            "properties": {
+                "terms": {
+                    "items": {
+                        "additionalProperties": {
+                            "type": "integer"
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "host": "sentiment.254512d2-b14f-44df-8b99-a8f3079b8dde.nodes.k8s.fr-par.scw.cloud",
+    "info": {
+        "title": "Sentiment Analyzer",
+        "version": "0.0.0"
+    },
+    "paths": {
+        "/api/sentiment": {
+            "post": {
+                "description": "",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "schema": {
+                            "$ref": "#/definitions/sentences"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "properties": {
+                                "sentiment": {
+                                    "items": {
+                                        "items": {
+                                            "type": "number"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "type": "array"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/error"
+                        }
+                    },
+                    "401": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/error"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "summary": "Extract sentiment information from sentences",
+                "tags": [
+                    "sentiment"
+                ]
+            }
+        },
+        "/api/terms": {
+            "post": {
+                "description": "",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "schema": {
+                            "$ref": "#/definitions/sentences"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "$ref": "#/definitions/terms"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/error"
+                        }
+                    },
+                    "401": {
+                        "description": "forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/error"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "summary": "Spell check input sentences",
+                "tags": [
+                    "terms"
+                ]
+            }
+        },
+        "/healthz": {
+            "get": {
+                "description": "",
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "summary": "Health endpoint",
+                "tags": [
+                    "healthz"
+                ]
+            }
+        }
+    },
+    "schemes": [
+        "https"
+    ],
+    "securityDefinitions": {
+        "Bearer": {
+            "in": "header",
+            "name": "Authorization",
+            "type": "apiKey"
+        }
+    },
+    "swagger": "2.0"
+}

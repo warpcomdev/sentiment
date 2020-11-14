@@ -8,7 +8,11 @@ Las interacciones con redes de datos se almacenan en una tabla `cx_engagement` c
 - `channel`: Canal al que pertenecen los datos. El concepto de canal depende de la red social. Por ejemplo:
 
   - En twitter, cada cuenta de usuario se considera un canal.
+<<<<<<< HEAD
   - En youtube, se usan los canales de youtube para agregar.
+=======
+  - En youtube, los canales se corresponden a canales de vídeo.
+>>>>>>> 2775ad1d538c92ea9ea02ecbdb5978740f45a95c
 
 - `day`: Día al que pertenecen las estadísticas.
 - `total_followers`: Total de followers / subscribers acumulados hasta ese día.
@@ -25,6 +29,7 @@ Las interacciones con redes de datos se almacenan en una tabla `cx_engagement` c
 - `daily_repost`: Número de veces que se han reenviado los mensajes enviados.
 
   - En twitter: retweets.
+  - En youtube: comentarios.
 
 - `daily_reply`: Número de respuestas a los mensajes de ese dia concreto.
 
@@ -43,3 +48,9 @@ Ejemplo de datos:
 | twitter | LanzaroteESD    | 2020-08-24 00:00:00 |             711 |            285 |        1146 |           1 |           11 |           0 |          0 |           0 |
 | twitter | LanzaroteFilm   | 2020-08-24 00:00:00 |             563 |            101 |         223 |             |              |             |            |             |
 | twitter | SPEL_TurismoLZT | 2020-08-24 00:00:00 |             470 |            370 |         839 |             |              |             |            |             |
+
+## ETLs
+
+- Twitter: [twitter/README.md](twitter/README.md)
+- Youtube: [youtube/README.md](youtube/README.md)
+
