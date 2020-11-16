@@ -81,9 +81,12 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
     # may yield several rows with the same keys
     if len(frames) <= 0:
         return
+    terms = pd.concat(frames, ignore_index=True)
+    norms = sentiment.Api.normalize(terms)
 
     # HACK: Save tweet info
     tweets = terms[['id', 'created_at', 'clean', 'terms']]
+    tweets['terms'] = tweets['terms'].to_json()
     tweets = pd.concat(
         [tweets.drop(['clean'], axis=1), tweets['clean'].apply(pd.Series)],
         axis=1)
@@ -98,8 +101,6 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
                    adapt_dtype_of_empty_db_columns=False)
 
     # Align terms information to database columns
-    terms = pd.concat(frames, ignore_index=True)
-    norms = sentiment.Api.normalize(terms)
     columns = {
         'day': 'day',
         'lang': 'lang',
