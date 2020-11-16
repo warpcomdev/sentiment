@@ -4,6 +4,7 @@
 import sys
 import os
 import logging
+import json
 from typing import Sequence, Optional
 
 import sqlalchemy
@@ -86,7 +87,7 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
 
     # HACK: Save tweet info
     tweets = terms[['id', 'created_at', 'clean', 'terms']]
-    tweets['terms'] = tweets['terms'].to_json()
+    tweets['terms'] = tweets['terms'].apply(json.dumps)
     tweets = pd.concat(
         [tweets.drop(['clean'], axis=1), tweets['clean'].apply(pd.Series)],
         axis=1)
@@ -134,9 +135,9 @@ def upsert_tweet_data(engine: sqlalchemy.engine, api: twitter.Api,
 
 if __name__ == "__main__":
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(logging.INFO)
     root.addHandler(handler)
 
     ETL_CONFIG_PATH = os.path.realpath(os.getenv('ETL_CONFIG_PATH') or '.')
