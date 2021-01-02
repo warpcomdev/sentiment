@@ -1,4 +1,5 @@
-# syntax = docker/dockerfile:1.0-experimental
+# syntax = docker/dockerfile:experimental
+# must build with DOCKER_BUILDKIT=1 docker build --rm -t sentiment:latest .
 FROM python:3.8-slim
 
 RUN mkdir /app
