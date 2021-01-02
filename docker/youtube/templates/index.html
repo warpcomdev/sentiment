@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Youtube Login Page</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="static/css/main.css" />
+</head>
+
+<body>
+    <table>
+        <tr>
+            <td><a href="authorize">Iniciar sesión</a></td>
+            <td>Iniciar sesión con su cuenta de google.</td>
+        </tr>
+        <tr>
+            <td><a href="test">Validar sesión</a></td>
+            <td>Volver a obtener token, en caso de que su sesión ya esté iniciada.</td>
+        </tr>
+        <tr>
+            <td><a href="revoke">Revocar acceso</a></td>
+            <td>Revocar acceso a la aplicación.</td>
+        </tr>
+        <tr>
+            <td><a href="clear">Terminar sesión</a></td>
+            <td>Terminar sesión en este site sin revocar el acceso a la apliación.
+                Es seguro efectuar este paso tras haber obtenido el token.</td>
+        </tr>
+    </table>
+
+<div id="status">
+    {{ status|safe }}
+</div>
+</body>
+
+</html>
