@@ -38,7 +38,7 @@ CLIENT_SECRET_PATH = os.environ.get("SECRET_PATH",
                                     "secrets") + "/client_secret.json"
 CLIENT_SECRET = fromjson(CLIENT_SECRET_PATH)
 
-SERVICE_NAME = os.environ.get("SERVICE_NAME", "")
+SERVICE_NAME = os.environ.get("SERVICE_NAME", "youtubereporting")
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 API_VERSION = os.environ.get("API_VERSION", "v1")
 API_SCOPES = [
