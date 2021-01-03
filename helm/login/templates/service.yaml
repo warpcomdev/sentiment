@@ -1,0 +1,18 @@
+{{ $fullname := include "login.fullname" . }}
+{{- range $provider, $domains := .Values.hostnames }}
+---
+kind: Service
+metadata:
+  name: "{{ $fullname }}-{{ $provider }}"
+  labels:
+    {{- include "login.labels" $ | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: "{{ $provider }}-login"
+    {{- include "login.selectorLabels" $ | nindent 4 }}
+  ports:
+  - name: www
+    port: {{ $.Values.port }}
+    targetPort: {{ $.Values.port }}
+{{- end }}

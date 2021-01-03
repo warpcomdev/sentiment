@@ -1,0 +1,59 @@
+{{ $fullname := include "login.fullname" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-youtube
+  labels:
+    app: youtube-login
+    {{- include "login.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replication.initialCount }}
+  {{- with .Values.replication.strategy }}
+  strategy:
+    {{ toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      name: {{ $fullname }}-youtube
+      labels:
+        app: youtube-login
+        {{- include "login.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: login
+        image: {{ .Values.image.youtube.repository }}:{{ .Values.image.youtube.tag }}
+        imagePullPolicy: {{ .Values.image.youtube.pullPolicy }}
+        envFrom:
+        - configMapRef:
+            name: {{ $fullname }}-youtube
+        environment:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "{{ $fullname }}-youtube"
+              key: SECRET_KEY
+        ports:
+        - name: www
+          containerPort: {{ .Values.port }}
+        {{- with .Values.resources }}
+        resources:
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+        {{ with .Values.livenessProbe }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ $.Values.port }}
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: secrets
+          mountPath: /app/secrets
+      volumes:
+      - name: secrets
+        secret:
+          secretName: "{{ $fullname }}-youtube"
+  selector:
+    matchLabels:
+      app: youtube-login
+      {{- include "login.selectorLabels" . | nindent 6 }}

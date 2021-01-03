@@ -1,0 +1,24 @@
+{{- if and .Values.tls.enabled .Values.tls.create }}
+{{- $fullname := include "login.fullname" . }}
+{{- range $provider, $domains := .Values.hostnames }}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: "{{ $fullname }}-{{ $provider }}"
+  labels:
+    {{- include "login.labels" $ | nindent 4 }}
+spec:
+  dnsNames:
+  {{- toYaml $domains | nindent 2 }}
+  issuerRef:
+    kind: {{ $.Values.tls.type }}
+    name: {{ $.Values.tls.issuer }}
+  renewBefore: 48h0m0s
+  {{- if $.Values.tls.secret }}
+  secretName: "{{ $.Values.tls.secret }}-{{ $provider }}"
+  {{- else }}
+  secretName: "{{ $fullname }}-{{ $provider }}-cert"
+  {{- end }}
+{{- end }}
+{{- end }}

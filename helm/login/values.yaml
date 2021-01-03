@@ -1,0 +1,80 @@
+replication:
+  initialCount: 1
+  strategyType: RollingUpdate
+
+image:
+  facebook:
+    repository: warpcomdev/facebook-login
+    tag: latest
+    pullPolicy: IfNotPresent
+  youtube:
+    repository: warpcomdev/youtube-login
+    tag: latest
+    pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+#livenessProbe:
+#    initialDelaySeconds: 300
+#    periodSeconds: 30
+#    timeoutSeconds: 5
+#    successThreshold: 1
+#    failureThreshold: 3
+
+resources:
+  limits:
+    cpu: "150m"
+    memory: "128Mi"
+  requests:
+    cpu: "250m"
+    memory: "200Mi"
+
+# Hostnames for the Kubernetes ingress.
+# THE FIRST HOSTNAME MUST BE < 64 CHARACTERS
+# SEE https://github.com/jetstack/cert-manager/issues/2794
+hostnames:
+  facebook:
+  - "facebook.analytics.<your-wildcard-DNS>"
+  youtube:
+  - "youtube.analytics.<your-wildcard-DNS>"
+# TCP port to listen on
+port: 3000
+
+# TLS settings for ingress
+tls:
+  # True para usar TLS en el ingress
+  enabled: True
+  # True para crear el objeto Certificate de cert-manager
+  create: True
+  # Nombre y tipo del issuer configurado con el operador de CertManager
+  issuer: "letsencrypt-prod"
+  type: ClusterIssuer
+  # Nombre del secreto donde se almacenará el certificado,
+  # por defecto coincide con el nombre de release Helm.
+  secret: ""
+
+# Configuración particular de cada servicio
+youtube:
+  # Secret key to encrypt login token
+  secretKey: "type-here-your-secret-key"
+  # API secret for youtube login
+  clientSecret: |
+    {
+      "web": {
+          "client_id": "xxx...xxx",
+          "project_id": "xxx...xxx",
+          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+          "token_uri": "https://oauth2.googleapis.com/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_secret": "xxx...xxx",
+          "redirect_uris": [
+              "https://youtube.analytics.urbo2.es/oauth2callback",
+              "https://localhost:8443/oauth2callback"
+          ],
+          "javascript_origins": [
+              "https://youtube.analytics.urbo2.es",
+              "https://localhost:8443"
+          ]
+      }
+    }

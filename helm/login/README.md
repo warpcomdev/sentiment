@@ -1,23 +1,26 @@
-# Sentiment Helm chart
+# Login Helm chart
 
-Este directorio contiene una tabla Helm para desplegar el servicio de análisis de sentimiento proporcionado por la imagen Docker definida en [../docker/sentiment](../docker/sentiment).
+Este directorio contiene una tabla Helm para desplegar los portales de login en las diferentes redes sociales (google, facebook, etc), proporcionados por las imagenes docker definidas en [../docker](../docker).
 
-La imagen requiere que el cluster Kubernetes tenga instalado el [operador de certmanager](https://cert-manager.io/docs/), si se quiere publicar la API por HTTPS.
+La tabla requiere que el cluster Kubernetes tenga instalado el [operador de certmanager](https://cert-manager.io/docs/), si se quiere publicar la API por HTTPS.
 
 ## Configuración
 
 Las variables que soporta la tabla son:
 
-- `hostnames`: Lista de nombres de dominio publicadas por Kubernetes Ingress. El primer hostname de la lista debe tener **menos de 64 caracteres** de longitud (véase https://github.com/jetstack/cert-manager/issues/2794). Por ejemplo:
+- `hostnames`: Lista de nombres de dominio publicadas por Kubernetes Ingress. El primer hostname de la lista debe tener **menos de 64 caracteres** de longitud (véase https://github.com/jetstack/cert-manager/issues/2794).
+
+Debe indicarse una lista de hostnames por cada servicio de login. Por ejemplo:
 
 ```bash
 hostnames:
-    - "sentiment.<your-wildcard-DNS>"
+  facebook:
+    - "facebook.analytics.<your-wildcard-DNS>"
+  youtube:
+    - "youtube.analytics.<your-wildcard-DNS>"
 ```
 
 - `port`: Puerto interno en el que escuchará la API (por defecto, 3000).
-
-- `token`: Token de autenticación para proteger las llamadas a la API.
 
 - `tls`: Configuración para la obtención de certificados, por ejemplo:
 
@@ -40,11 +43,11 @@ tls:
 ```yaml
 resources:
     limits:
-        cpu: "4"
-        memory: "4Gi"
+        cpu: "150m"
+        memory: "128Mi"
     requests:
-        cpu: "500m"
-        memory: "2Gi"
+        cpu: "250m"
+        memory: "200Mi"
 ```
 
 El resto de variables soportadas se describen en el fichero [values.yaml](values.yaml), aunque no se recomienda cambiarlas de sus valores por defecto.

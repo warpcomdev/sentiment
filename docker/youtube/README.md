@@ -99,7 +99,7 @@ La aplicación puede desplegarse como un contenedor docker, usando la imagen pub
 - `SERVICE_NAME`: Nombre del servicio / API de google que se va a consultar. Por defecto, **youtubereporting**.
 - `SECRET_KEY`: Secreto con el que se cifran y descifran las credenciales del usuario.
 - `API_VERSION`: Versión de la API de Google Discovery (por defecto, **v1**).
-- `SECRET_PATH`: Ruta al directorio donde está el fichero de credenciales **client_secret.json**.
+- `SECRET_PATH`: Ruta al directorio donde está el fichero de credenciales `client_secret.json` (por defecto, **secrets**).
 
 Por ejemplo, para ejecutar el servicio en el puerto 8443, teniendo el fichero `client_secret.json` guardado en la ruta `secrets`, se utilizaría el comando:
 
@@ -204,7 +204,7 @@ El texto cifrado puede descifrarse utilizando esta misma aplicación, y la clave
 Las credenciales obtenidas por el cliente pueden descifrarse ejecutando la aplicación `app.py` desde la línea de comandos, indicando el mismo valor de `SECRET_KEY` que se haya utilizado para cifrar el texto:
 
 ```bash
-ansible@demo:~/projects/sentiment/docker/youtube$ docker run --rm -it -e SECRET_KEY=xxx...xxx warpcomdev/youtube-login:latest python app.py 'AAAAIJcbrhUkXCIW4+oArKP8YTSbll0+l0TSUxbXKxUXKHcWAAAAEONg25La
+$ docker run --rm -it -e SECRET_KEY=xxx...xxx warpcomdev/youtube-login:latest python app.py 'AAAAIJcbrhUkXCIW4+oArKP8YTSbll0+l0TSUxbXKxUXKHcWAAAAEONg25La
 > FUffpWSVQxPwoNQAAAAQ9EhvtFbFiUPHsSJO9SD/DwAAAsaLvY2jmCEqlh1+
 > qh0mrCCyY5jLMi2apVNWmIrdNExoPjyuOACzGBy4Fe/Ro/LvhIjGbqfPszat
 > ...
