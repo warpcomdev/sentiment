@@ -1,0 +1,9 @@
+{
+  "name": "facebook-login",
+  "description": "",
+  "version": "0.1.0",
+  "devDependencies": {
+    "serverless": "^1.82.0",
+    "serverless-wsgi": "^1.7.5"
+  }
+}

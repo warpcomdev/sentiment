@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Facebook Login Page</title>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="static/css/main.css"/>
+</head>
+<body>
+<script>
+
+  /* -----------------------------------------
+   * Manipulate page layout
+   * ----------------------------------------- */
+
+  // Display the login page
+  function spa_login() {
+    document.getElementById("logout").style.display = "none"
+    document.getElementById("login").style.display = "block"
+    document.getElementById('status').innerHTML = '<p>Por favor, inicie sesión para generar credenciales.</p>';
+  }
+
+  // Display the results page
+  function spa_pages(name, pages) {
+    document.getElementById("logout").style.display = "block"
+    document.getElementById("login").style.display = "none"
+    document.getElementById('status').innerHTML =
+      '<p>Gracias por iniciar sesión, ' + name + '!</p>' +
+      '<p>Lista de páginas autorizadas:</p>' +
+      buildUL(pages.public.map(function (page) { return page.name; })) + 
+      '<p>Si la lista no incluye todas las páginas que quieres compartir con la aplicación, por favor cierra sesión e iniciala de nuevo, seleccionando todas las páginas que deseas compartir</p>' +
+      '<p>Por favor comparte este secreto con tu administrador:</p>' +
+      '<pre>' + buildPre(pages.secret) + '</pre>';
+  }
+
+  function buildUL(items) {
+    return '<UL>' + items.map(function(item) { return '<LI>' + item + '</LI>'; }).join() + '</UL>'
+  }
+
+  function buildPre(line) {
+    var lines = [];
+    var llen = line.length;
+    for(var begin = 0; begin < llen; begin += 40){
+      let end = begin + 40;
+      if (end > llen) {
+        end = llen;
+      }
+      lines.push(line.slice(begin, end));
+    }
+    return lines.join("\n");
+  }
+
+  /* ---------------------------------
+   * Control page status
+   * --------------------------------- */
+
+  // Fetches url with params, returns a promise with json response.
+  function fetch_json(url, params) {
+    return fetch(url, params).then(function(response) { return response.json(); });
+  }
+
+  // Initializes facebook API
+  window.fbAsyncInit = function() {
+    fetch_json("api/client", {})
+    .then(function(data) {
+      FB.init({
+        appId      : data.appId,
+        cookie     : true,                     // Enable cookies to allow the server to access the session.
+        xfbml      : true,                     // Parse social plugins on this webpage.
+        version    : data.apiVersion           // Use this Graph API version for this call.
+      });
+      checkLoginState();
+    });
+  };
+
+  // Checks login state
+  function checkLoginState() {               // Called when a person is finished with the Login Button.
+    FB.getLoginStatus(function(response) {   // See the onlogin handler
+      statusChangeCallback(response);
+    });
+  }
+
+  // Controls page status according to facebook session
+  function statusChangeCallback(response) {
+    console.log('statusChangeCallback');
+    console.log(response);
+    if (response.status === 'connected') {
+      requestPages(response.authResponse.accessToken);  
+    } else {
+      spa_login();
+    }
+  }
+
+  // Request list of logged in user's pages
+  function requestPages(access_token) {
+    console.log('Welcome!  Fetching your information.... ');
+    FB.api('/me', function(response) {
+      console.log('Successful login for: ' + response.name);
+      console.log(response);
+
+      const data = new URLSearchParams();
+      data.append("user", response.id);
+      data.append("token", access_token);
+      fetch_json("api/pages", { method: 'post', body: data, })
+      .then(function(pages) {
+        spa_pages(response.name, pages);
+      });
+    });
+  }
+
+  /* -------------------------------------
+   * page Callbacks
+   * ------------------------------------- */
+
+  function onLogout() {
+    FB.logout(function(response) {
+      spa_login();
+    });
+  }
+
+</script>
+
+<div class="header" id="myHeader">
+  <img height="64px" src="https://intl.imprivata.com/sites/default/files/reseller-logos/04%20logo%20warpcom%20solo%20VRT.png"/>
+  <div class="title"><a href="https://warpcom.com/en/privacy-and-cookies-policy/">Términos y condiciones</a></div>
+</div>
+
+<div id="loginBlock">
+  <div id="login"
+    data-scope="pages_show_list,pages_read_engagement,read_insights,instagram_basic,instagram_manage_insights,instagram_manage_comments"
+    data-onlogin="statusChangeCallback"
+    class="fb-login-button"
+    data-size="large"
+    data-button-type="continue_with"
+    data-layout="default"
+    data-auto-logout-link="false"
+    data-use-continue-as="false"
+    data-width="">
+  </div>
+  <!--<button id="login"  onClick="javascript: onLogin()"  style="display: none">Login to Facebook</button>-->
+  <button id="logout" onClick="javascript: onLogout()" style="display: none">Cerrar sesión</button>
+</div>
+
+<div id="status">
+</div>
+
+<!-- Load the JS SDK asynchronously -->
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_ES/sdk.js#xfbml=1&version=v8.0&appId=2187416598057075"></script>
+
+</body>
+</html>

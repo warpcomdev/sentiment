@@ -224,7 +224,6 @@ def clear():
         del flask.session['credentials']
     return flask.render_template('index.html', status='Sesión cerrada.')
 
-
 @app.route('/healthz')
 def healthz():
     return flask.jsonify({'status': 'ok'})
