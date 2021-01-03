@@ -101,7 +101,7 @@ functions:
 
 #    Define function environment variables here
     environment:
-      CRYPTO_SECRET:        "EDIT IN CONSOLE AFTER DEPLOYED"
+      SECRET_KEY:           "EDIT IN CONSOLE AFTER DEPLOYED"
       FACEBOOK_APPID:       "EDIT IN CONSOLE AFTER DEPLOYED"
       FACEBOOK_APPSECRET:   "EDIT IN CONSOLE AFTER DEPLOYED"
       FACEBOOK_API_VERSION: "v8.0"

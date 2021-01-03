@@ -22,7 +22,7 @@ import flask
 FACEBOOK_APPID = os.getenv("FACEBOOK_APPID")
 FACEBOOK_APPSECRET = os.getenv("FACEBOOK_APPSECRET")
 FACEBOOK_API_VERSION = os.getenv("FACEBOOK_API_VERSION")
-CRYPTO_SECRET = os.getenv("CRYPTO_SECRET")
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECRET MANAGEMENT SECTION
 # -------------------------
@@ -167,7 +167,7 @@ def pages():
     info = get_pages(user, get_llt(token))
     return {
         "public": [{ "id": page["id"], "name": page["name"] } for page in info['pages']],
-        "secret": encrypt(CRYPTO_SECRET, info),
+        "secret": encrypt(SECRET_KEY, info),
     }
 
 @app.route('/healthz')
@@ -182,4 +182,4 @@ if __name__ == "__main__":
     if len(sys.argv) <= 1:
         print("You must provide encrypted string", file=sys.stderr)
         sys.exit(-1)
-    print(decrypt(CRYPTO_SECRET, sys.argv[1]))
+    print(decrypt(SECRET_KEY, sys.argv[1]))

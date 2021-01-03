@@ -1,4 +1,26 @@
 {{ $fullname := include "login.fullname" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-youtube
+  labels:
+    {{- include "login.labels" . | nindent 4 }}
+data:
+  SERVICE_NAME: "youtubereporting"
+  API_VERSION: "v1"
+  SECRET_PATH: "/app/secrets"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $fullname }}-youtube
+  labels:
+    {{- include "login.labels" . | nindent 4 }}
+data:
+  SECRET_KEY: {{ .Values.youtube.secretKey | b64enc | quote }}
+  client_secret.json: {{ .Values.youtube.clientSecret | b64enc | quote }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

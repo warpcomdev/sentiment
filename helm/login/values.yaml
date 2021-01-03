@@ -78,3 +78,8 @@ youtube:
           ]
       }
     }
+
+facebook:
+  secretKey: xxx...xxx
+  appId: xxx...xxx
+  appSecret: xxx...xxx
