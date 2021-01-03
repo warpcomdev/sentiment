@@ -24,20 +24,20 @@ fullnameOverride: ""
 
 resources:
   limits:
-    cpu: "150m"
-    memory: "128Mi"
-  requests:
     cpu: "250m"
     memory: "200Mi"
+  requests:
+    cpu: "150m"
+    memory: "128Mi"
 
 # Hostnames for the Kubernetes ingress.
 # THE FIRST HOSTNAME MUST BE < 64 CHARACTERS
 # SEE https://github.com/jetstack/cert-manager/issues/2794
 hostnames:
   facebook:
-  - "facebook.analytics.<your-wildcard-DNS>"
+  - "facebook.analytics.urbo2.es"
   youtube:
-  - "youtube.analytics.<your-wildcard-DNS>"
+  - "youtube.analytics.urbo2.es"
 # TCP port to listen on
 port: 3000
 
@@ -57,7 +57,7 @@ tls:
 # Configuración particular de cada servicio
 youtube:
   # Secret key to encrypt login token
-  secretKey: "type-here-your-secret-key"
+  secretKey: "xxx...xxx"
   # API secret for youtube login
   clientSecret: |
     {

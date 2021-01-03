@@ -1,6 +1,7 @@
 {{ $fullname := include "login.fullname" . }}
 {{- range $provider, $domains := .Values.hostnames }}
 ---
+apiVersion: v1
 kind: Service
 metadata:
   name: "{{ $fullname }}-{{ $provider }}"
