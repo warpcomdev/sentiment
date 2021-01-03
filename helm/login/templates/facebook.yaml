@@ -8,6 +8,7 @@ metadata:
     {{- include "login.labels" . | nindent 4 }}
 data:
   FACEBOOK_API_VERSION: "v9.0"
+  DEBUG: "{{ .Values.facebook.debug }}"
 ---
 apiVersion: v1
 kind: Secret

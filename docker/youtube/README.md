@@ -100,6 +100,8 @@ La aplicación puede desplegarse como un contenedor docker, usando la imagen pub
 - `SECRET_KEY`: Secreto con el que se cifran y descifran las credenciales del usuario.
 - `API_VERSION`: Versión de la API de Google Discovery (por defecto, **v1**).
 - `SECRET_PATH`: Ruta al directorio donde está el fichero de credenciales `client_secret.json` (por defecto, **secrets**).
+- `DEBUG`: "1" para activar el log de debug, "0" en otro caso.
+
 
 Por ejemplo, para ejecutar el servicio en el puerto 8443, teniendo el fichero `client_secret.json` guardado en la ruta `secrets`, se utilizaría el comando:
 

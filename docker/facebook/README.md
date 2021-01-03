@@ -14,7 +14,7 @@ Desde la consola de desarrollador de Facebook (https://developers.facebook.com),
 
 ![facebook create app](static/img/facebook_create_app.png)
 
-La aplicación deberá ser de tipo *Management App*:
+La aplicación deberá ser de tipo *Manage Business Integrations*:
 
 ![facebook app type](static/img/facebook_app_type.png)
 
@@ -48,21 +48,21 @@ Al añadir el producto *Facebook Login*, el dashboard te ofrece un asistente de 
 
 ### Obtención de token
 
-Una vez creada la aplicación, se puede obtener un token utilizando la herramienta **Access Token Tool** Disponible en https://developers.facebook.com/tools/accesstoken/:
+Una vez creada la aplicación, se puede obtener el secreto de la aplicacion en la opción *Settings > Basic > App Secret*::
 
 ![facebook app token](static/img/facebook_app_token.png)
 
-El token a utilizar es el **App Token** obtenido por esa herramienta, que no caduca.
+El token a utilizar en es **App Secret** obtenido al pulsar sobre el botón *Show*.
 
 ### Alta de usuarios
 
-La aplicación puede utilizarse sin necesidad de pasar por el proceso de aprobación de Faceboo, siempre que los usuarios finales se den de alta como Beta Testers.
+La aplicación puede utilizarse sin necesidad de pasar por el proceso de aprobación de Facebook, siempre que los usuarios finales se den de alta como Beta Testers.
 
 Para eso, las cuentas de usuario final deben cumplir estos requisitos:
 
-•	Su cuenta de Instagram debe estar en modo Instagram Business Account o Instagram Creator Account
-•	Sus cuentas de Facebook e Instagram deben estar conectadas (https://help.instagram.com/176235449218188).
-•	La cuenta de Instagram debe estar enlazada con la página corporativa de Facebook de esa misma cuenta (https://help.instagram.com/399237934150902?fbclid=IwAR3e0oQtJUebuxVy94brOlLPJJjnTPYTC5-Plj-I9d10hFBlTqiJwCbniV8)
+- Su cuenta de Instagram debe estar en modo Instagram Business Account o Instagram Creator Account
+- Sus cuentas de Facebook e Instagram deben estar conectadas (https://help.instagram.com/176235449218188).
+- La cuenta de Instagram debe estar enlazada con la página corporativa de Facebook de esa misma cuenta (https://help.instagram.com/399237934150902?fbclid=IwAR3e0oQtJUebuxVy94brOlLPJJjnTPYTC5-Plj-I9d10hFBlTqiJwCbniV8)
 
 Si se cumplen esos requisitos, las cuentas de los usuarios pueden configurarse como testers de la aplicación, en la página de *Roles > testers > Add testers*:
 
@@ -90,6 +90,7 @@ La aplicación puede desplegarse como un contenedor docker, usando la imagen pub
 - FACEBOOK_API_VERSION: Versión de la Graph API de Facebook a utilizar. Esta aplicación se ha probado con la API `v8.0`.
 - FACEBOOK_APPID: ID de aplicación de Facebook.
 - FACEBOOK_APPSECRET: Token de aplicación obtenido tal como se describe en el apartado anterior.
+- DEBUG: "1" para activar el log de debug, "0" en otro caso.
 
 Por ejemplo, para ejecutar el servicio en el puerto 8443, se utilizaría el comando:
 
@@ -154,8 +155,6 @@ layers:
 
 Una vez desplegada la función, es necesario proporcionarle algunas variables de entorno desde la consola de gestión de AWS lambda:
 
-![environment.png](static/img/environment.png)
-
 - SECRET_KEY: Una cadena aleatoria que se utiliza para cifrar el token que se le muestra al usuario por pantalla, una vez que inicia sesión en Facebook.
 - FACEBOOK_API_VERSION: Versión de la Graph API de Facebook a utilizar. Esta aplicación se ha probado con la API `v9.0`.
 - FACEBOOK_APPID: ID de aplicación de Facebook.
@@ -168,30 +167,54 @@ Para limitar el uso de las funciones y evitar que un posible DoS acabe costando 
 ![concurrency.png](static/img/concurrency.png)
 
 Obviamente una instancia es escasa para servir a múltiples usuarios, pero para esta aplicación a la que sólo esperamos que se conecte un administrador muy ocasionalmente, es suficiente.
- 
-## Descifrado
 
-Una vez el cliente inicia sesión en la página, obtiene un secreto parecido al siguiente:
+## Uso de la aplicación
+
+### Inicio de sesión
+
+El objetivo de esta aplicación es obtener un token que pueda ser utilizado para consultar la API de facebook en representación de nuestro cliente final.
+
+Para eso, el cliente **debe iniciar sesión** en la URL en la que se haya publicado esta aplicación. El proceso solicita confirmación para autorizar el acceso a las APIs de Facebook e Instagram:
+
+![facebook confirm](static/img/facebook_app_login.png)
+
+Si la aplicación se ejecuta sin revisión, aparecerá un aviso indicando que varios de los permisos no están otorgados. Esto es normal, se debe continuar con el proceso de autorización:
+
+![facebook app review missing](static/img/facebook_app_review_missing.png)
+
+La confirmación del acceso genera un **token**, que la aplicación cifra con la clave especificada en la variables de entorno `SECRET_KEY`. El texto cifrado se le muestra al cliente por pantalla:
+
+![facebook secret](static/img/facebook_secret.png)
+
+El texto cifrado puede descifrarse utilizando esta misma aplicación, y la clave secreta.
+
+### Descifrado de credenciales
+
+Las credenciales obtenidas por el cliente pueden descifrarse ejecutando la aplicación `app.py` desde la línea de comandos, indicando el mismo valor de `SECRET_KEY` que se haya utilizado para cifrar el texto:
+
+```bash
+$ docker run --rm -it -e SECRET_KEY=xxx...xxx warpcomdev/facebook-login:latest python app.py '
+> AAAAIJcbrhUkXCIW4+oArKP8YTSbll0+l0TSUxbXKxUXKHcWAAAAEONg25La
+> FUffpWSVQxPwoNQAAAAQ9EhvtFbFiUPHsSJO9SD/DwAAAsaLvY2jmCEqlh1+
+> qh0mrCCyY5jLMi2apVNWmIrdNExoPjyuOACzGBy4Fe/Ro/LvhIjGbqfPszat
+> ...
+> 4d2WddAsrKAiTYgwDQ4mr01fNS6F9FXpkVo6a6iSJvlkTfjnU+ePnbrdHD6e
+> PtyeGlyxdzf8Zejybr2rCSyfcoEeIEKlnAAA'
+```
+
+Esto generará un resultado como el siguiente:
 
 ```json
 {
-  "iv": "ph2Q0pG0D8OaIEMwOda1Aw==",
-  "message": [
-    "w6vfryOvBp++hX4bnlCkLQnuvvOwfwoiCM7o7TIa",
-    "4L+/jZ+CgBKc5l3475456MsaDVkKsc273Z+gkSeI",
-    "30/VWT4ygjhtjuq2wDliNDWfv6pLopltSey+WDKt",
-    "7E4kIws+Y1p1s3iCULreuJu8iXymS3jEOzaxTYqA",
-    "hpOzzquVEvG05PUifx0RfRrxfQgTa15kh6mfM3h1",
-    "ke45ffg9UIRYUNduYAT8Atyutuvh5467lHmABww1",
-    "K3tkl1NEX3wp0+XEwysLn//tfI5vr88aZ++Ns35T",
-    "dCmrNWO4/////////////hNZ1N34un2nKD7QoRFM",
-    "1rBS5sPRVbgaYt5XM1ISJA=="
+  "user_token": "xxx...xxx",
+  "pages": [
+    {
+      "name": "Analytics Test",
+      "id": "xxx...xxx",
+      "access_token": "xxx...xxx"
+    }
   ]
 }
 ```
 
-Este código puede descifrarse ejecutando la aplicación, especificando como variable de entorno el mismo *SECRET_KEY* que haya usado la web para la encriptación:
-
-```bash
-SECRET_KEY=... python app.py '{ ... }'
-```
+Este fichero es el que podrá usarse para ejecutar las ETLs de carga de datos de Facebook.

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-function-docstring,missing-module-docstring,invalid-name
 
-import sys
 import os
 import base64
 import json
@@ -17,6 +16,24 @@ from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto import Random
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+
+# DEBUG SECTION
+# ---------------------
+
+if os.getenv("DEBUG", "0") == "1":
+    import logging
+    try: # for Python 3
+        from http.client import HTTPConnection
+    except ImportError:
+        from httplib import HTTPConnection
+    HTTPConnection.debuglevel = 1
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+    requests_log = logging.getLogger("urllib3")
+    requests_log.setLevel(logging.DEBUG)
+    requests_log.propagate = True
+
 
 # CONFIGURATION SECTION
 # ---------------------
@@ -47,7 +64,6 @@ API_SCOPES = [
 
 # SECRET MANAGEMENT SECTION
 # -------------------------
-
 
 def derive_key(password: str,
                salt: Optional[bytes] = None,
@@ -239,7 +255,9 @@ def credentials_to_dict(credentials):
     }
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) <= 1:
+        print("You must provide encrypted string", file=sys.stderr)
+        sys.exit(-1)
     CIPHERSTR = ''.join(sys.argv[1].split())
     print(json.dumps(decrypt(SECRET_KEY, CIPHERSTR), indent=2))
-else:
-    CLIENT_SECRET = fromjson(CLIENT_SECRET_PATH)

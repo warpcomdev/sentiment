@@ -7,10 +7,12 @@ image:
     repository: warpcomdev/facebook-login
     tag: latest
     pullPolicy: IfNotPresent
+    debug: "0"
   youtube:
     repository: warpcomdev/youtube-login
     tag: latest
     pullPolicy: IfNotPresent
+    debug: "0"
 
 nameOverride: ""
 fullnameOverride: ""

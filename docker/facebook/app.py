@@ -16,6 +16,23 @@ import requests
 import flask
 
 
+# DEBUG SECTION
+# ---------------------
+
+if os.getenv("DEBUG", "0") == "1":
+    import logging
+    try: # for Python 3
+        from http.client import HTTPConnection
+    except ImportError:
+        from httplib import HTTPConnection
+    HTTPConnection.debuglevel = 1
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+    requests_log = logging.getLogger("urllib3")
+    requests_log.setLevel(logging.DEBUG)
+    requests_log.propagate = True
+
+
 # Configuration section
 # ---------------------
 
@@ -94,12 +111,8 @@ def get_llt(token):
             "client_id": FACEBOOK_APPID,
             "client_secret": FACEBOOK_APPSECRET,
             "fb_exchange_token": token
-        })
-    resp_json = resp.json()
-    if resp.status_code != 200 or not "access_token" in resp_json:
-        print("Error getting llt token:", resp.text)
-        raise ValueError("Could not get llt from %s" % token)
-    return resp_json["access_token"]
+        }).json()
+    return resp["access_token"]
 
 
 def follow_pages(url, token):
@@ -186,4 +199,5 @@ if __name__ == "__main__":
     if len(sys.argv) <= 1:
         print("You must provide encrypted string", file=sys.stderr)
         sys.exit(-1)
-    print(decrypt(SECRET_KEY, sys.argv[1]))
+    CIPHERSTR = ''.join(sys.argv[1].split())
+    print(json.dumps(decrypt(SECRET_KEY, CIPHERSTR), indent=2))
