@@ -24,10 +24,10 @@ fullnameOverride: ""
 
 resources:
   limits:
-    cpu: "250m"
+    cpu: "200m"
     memory: "200Mi"
   requests:
-    cpu: "150m"
+    cpu: "100m"
     memory: "128Mi"
 
 # Hostnames for the Kubernetes ingress.
