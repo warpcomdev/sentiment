@@ -6,4 +6,4 @@ Este repositorio contiene varias construcciones para realizar analítica de rede
 
 - El directorio [helm](helm) contiene la tabla [sentiment](helm/sentiment) para efectuar el **despliegue** de la imagen anterior en un cluster **Kubernetes**.
 
-- El directorio [etls](etls) contiene los scripts de **extracción de datos de redes sociales**, que utilizan el servicio de procesado de texto anterior para analizar la información publicada por dichas redes, y almacenan los resultados en base de datos.
+- El directorio [etls](etls) (obsoleto) contiene las versiones iniciales de los scripts de **extracción de datos de redes sociales**. Estos scripts han sido movidos a la vertical de Social Networks de urbo.
