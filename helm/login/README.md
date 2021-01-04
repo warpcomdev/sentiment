@@ -10,8 +10,8 @@ Las URLs que utiliza el cliente final para acceder a las páginas de login, debe
 
 - Fijar un nombre de dominio para la web de login de cada servicio (youtube, facebook, etc), por ejemplo:
 
-  - https://youtube.analytics.<your wildcard DNS name>
-  - https://facebook.analytics.<your wildcard DNS name>
+  - `https://youtube.analytics.<your wildcard DNS name>`
+  - `https://facebook.analytics.<your wildcard DNS name>`
   
 - Configurar los DNS públicos para que dichos nombres de dominio se dirijan a la dirección IP pública asignada al Ingress de nuestro cluster de Kubernetes.
 - Incluir esas URLs como orígenes válidos en las aplicaciones sociales correspondientes, como se indica [aqui](../../docker/README.md)
@@ -87,11 +87,11 @@ youtube:
           "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
           "client_secret": "xxx...xxx",
           "redirect_uris": [
-              "https://youtube.analytics.urbo2.es/oauth2callback",
+              "https://youtube.analytics.<your wildcard domain>/oauth2callback",
               "https://localhost:8443/oauth2callback"
           ],
           "javascript_origins": [
-              "https://youtube.analytics.urbo2.es",
+              "https://youtube.analytics.<your wilcard domain>",
               "https://localhost:8443"
           ]
       }
@@ -125,9 +125,9 @@ Por este motivo, el nombre de dominio asignado al ingress de Kubernetes es muy i
 # SEE https://github.com/jetstack/cert-manager/issues/2794
 hostnames:
   facebook:
-  - "facebook.analytics.urbo2.es"
+  - "facebook.analytics.<your wildcard domain>"
   youtube:
-  - "youtube.analytics.urbo2.es"
+  - "youtube.analytics.<your wildcard domain"
 ```
 
 Es muy importante que el primer hostname de la lista para cada red social tenga **menos de 64 caracteres** de longitud (véase https://github.com/jetstack/cert-manager/issues/2794).
