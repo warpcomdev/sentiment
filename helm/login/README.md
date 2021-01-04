@@ -66,6 +66,17 @@ tls:
 
 Por supuesto, en este caso la gestión del ciclo de vida del secreto (caducidad y renovaciones) deberá realizarse manualmente.
 
+### Cuentas
+
+Las aplicaciones sociales requieren típicamente de credenciales de una **cuenta de desarrollador** o de negocio, antes de permitir que se realicen integraciones con sus cuentas de usuario.
+
+Estas credenciales han de ser obtenidas antes de comenzar con el despliegue de esta aplicación.
+
+El tipo de credenciales necesarias, y las instrucciones sobre cómo obtenerlas, está documentado junto con la imagen docker que implementa cada uno de los portales de login:
+
+- [instrucciones para google (youtube, doogle docs, etc)](../../docker/youtube/README.md)
+- [instrucciones para facebook (facebook, instagram, etc)](../../docker/facebook/README.md)
+
 ## Configuración
 
 ### Youtube
