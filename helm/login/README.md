@@ -1,6 +1,6 @@
 # Login Helm chart
 
-Este directorio contiene una tabla Helm para desplegar los portales de login en las diferentes redes sociales (google, facebook, etc), proporcionados por las imagenes docker definidas en [../docker](../docker).
+Este directorio contiene una tabla Helm para desplegar los portales de login en las diferentes redes sociales (google, facebook, etc), proporcionados por las imagenes docker definidas en [este mismo repositorio](../../docker).
 
 La tabla requiere que el cluster Kubernetes tenga instalado el [operador de certmanager](https://cert-manager.io/docs/), si se quiere publicar la API por HTTPS.
 
