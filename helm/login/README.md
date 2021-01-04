@@ -2,7 +2,69 @@
 
 Este directorio contiene una tabla Helm para desplegar los portales de login en las diferentes redes sociales (google, facebook, etc), proporcionados por las imagenes docker definidas en [../docker](../docker).
 
-La tabla requiere que el cluster Kubernetes tenga instalado el [operador de certmanager](https://cert-manager.io/docs/), si se quiere publicar la API por HTTPS.
+## Prerequisitos
+
+### Dominios
+
+Las URLs que utiliza el cliente final para acceder a las páginas de login, deben estar dadas de alta como orígenes oAuth válidos en las diversas aplicaciones creadas en las redes sociales. Es imprescindible:
+
+- Fijar un nombre de dominio para la web de login de cada servicio (youtube, facebook, etc), por ejemplo:
+
+  - https://youtube.analytics.<your wildcard DNS name>
+  - https://facebook.analytics.<your wildcard DNS name>
+  
+- Configurar los DNS públicos para que dichos nombres de dominio se dirijan a la dirección IP pública asignada al Ingress de nuestro cluster de Kubernetes.
+- Incluir esas URLs como orígenes válidos en las aplicaciones sociales correspondientes, como se indica [aqui](../../docker/README.md)
+
+### Certificados
+
+Para poder publicar las webs de inicio de sesión por HTTPS, con certificados automáticos (de [Let's Encrypt](https://letsencrypt.org)), la tabla requiere que el cluster Kubernetes tenga instalado el [operador de certmanager](https://cert-manager.io/docs/).
+
+En el caso de usar *Let's Encrypt* y el operador *CertManager*, será suficiente con sobrescribir los siguientes parámetros del fichero `values.yaml`:
+
+```yaml
+tls:
+    # True para usar TLS en el ingress
+    enabled: True
+    # True para crear el objeto Certificate de cert-manager
+    create: True
+    # Nombre y tipo del issuer configurado con el operador de CertManager
+    issuer: "letsencrypt-prod"
+    type: "ClusterIssuer"
+    # Nombre del secreto donde se almacenará el certificado,
+    # por defecto coincide con el nombre de release Helm.
+    secret: ""
+```
+
+Si no se van a usar certificados de Let's Encrypt, sino algún otro certificado pre-existente, se debe crear un **Secreto Kubernetes** que almacene:
+
+- La clave privada del certificado, en formato PEM,  en la entrada `tls.key`.
+- El certificado de la CA raíz, en formato PEM,  en la entrada `ca.crt`.
+- La cadena de certficado pública a utilizar, en formato PEM, en la entrada `tls.crt`.
+
+Este secreto puede crearse a partir de los tres ficheros PEM, usando esta orden:
+
+```bash
+kubectl create secret generic -n <nombre_del_namespace> <nombre_del_secreto> --from-file=ca.crt --from-file=tls.key --from-file tls.crt
+```
+
+El nombre del secreto debe especificarse en la variable `tls.secret` al desplegar la tabla Helm, estableciendo `tls.create` a `False`:
+
+```yaml
+tls:
+    # True para usar TLS en el ingress
+    enabled: True
+    # True para crear el objeto Certificate de cert-manager
+    create: False
+    # Nombre y tipo del issuer configurado con el operador de CertManager
+    issuer: ""
+    type: ""
+    # Nombre del secreto donde se almacenará el certificado,
+    # por defecto coincide con el nombre de release Helm.
+    secret: "nombre_del_secreto"
+```
+
+Por supuesto, en este caso la gestión del ciclo de vida del secreto (caducidad y renovaciones) deberá realizarse manualmente.
 
 ## Configuración
 
@@ -70,29 +132,9 @@ hostnames:
 
 Es muy importante que el primer hostname de la lista para cada red social tenga **menos de 64 caracteres** de longitud (véase https://github.com/jetstack/cert-manager/issues/2794).
 
-### Otros parámetros
+### Recursos
 
-El resto de variables importantes que pueden configurarse a través de la taba son:
-
-- `port`: Puerto interno en el que escuchará la API (por defecto, 3000).
-
-- `tls`: Configuración para la obtención de certificados, por ejemplo:
-
-```yaml
-tls:
-    # True para usar TLS en el ingress
-    enabled: True
-    # True para crear el objeto Certificate de cert-manager
-    create: True
-    # Nombre y tipo del issuer configurado con el operador de CertManager
-    issuer: "letsencrypt-prod"
-    type: "ClusterIssuer"
-    # Nombre del secreto donde se almacenará el certificado,
-    # por defecto coincide con el nombre de release Helm.
-    secret: ""
-```
-
-- `resources`: Recursos a asignar al pod, por defecto:
+Los recursos (memoria y CPU) a asignar al pod se especifican con el parámetro `resources`:
 
 ```yaml
 resources:
@@ -103,5 +145,3 @@ resources:
         cpu: "250m"
         memory: "200Mi"
 ```
-
-El resto de variables soportadas se describen en el fichero [values.yaml](values.yaml), aunque no se recomienda cambiarlas de sus valores por defecto.
