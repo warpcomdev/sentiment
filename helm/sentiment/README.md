@@ -1,6 +1,6 @@
 # Sentiment Helm chart
 
-Este directorio contiene una tabla Helm para desplegar el servicio de análisis de sentimiento proporcionado por la imagen Docker definida en [../docker/sentiment](../docker/sentiment).
+Este directorio contiene una tabla Helm para desplegar el servicio de análisis de sentimiento proporcionado por la imagen Docker definida en [../../docker/sentiment](../../docker/sentiment).
 
 ## Configuración
 
