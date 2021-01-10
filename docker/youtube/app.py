@@ -167,7 +167,8 @@ def test():
 @app.route('/authorize')
 def authorize():
     # Create flow instance to manage the OAuth 2.0 Authorization Grant Flow steps.
-    flow = google_auth_oauthlib.flow.Flow.from_client_config(CLIENT_SECRET,
+    client_secret = fromjson(CLIENT_SECRET_PATH)
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(client_secret,
                                                              scopes=API_SCOPES)
 
     # The URI created here must exactly match one of the authorized redirect URIs
