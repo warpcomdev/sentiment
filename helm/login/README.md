@@ -4,14 +4,25 @@ Este directorio contiene una tabla Helm para desplegar los portales de login en 
 
 ## Prerequisitos
 
+### Cuentas de desarrollador
+
+Las aplicaciones sociales requieren típicamente de credenciales de una **cuenta de desarrollador** o de negocio, antes de permitir que se realicen integraciones con sus cuentas de usuario.
+
+Estas credenciales han de ser obtenidas antes de comenzar con el despliegue de esta aplicación.
+
+El tipo de credenciales necesarias, y las instrucciones sobre cómo obtenerlas, está documentado junto con la imagen docker que implementa cada uno de los portales de login:
+
+- [instrucciones para google (youtube, doogle docs, etc)](../../docker/youtube/README.md)
+- [instrucciones para facebook (facebook, instagram, etc)](../../docker/facebook/README.md)
+
 ### Dominios
 
 Las URLs que utiliza el cliente final para acceder a las páginas de login, deben estar dadas de alta como orígenes oAuth válidos en las diversas aplicaciones creadas en las redes sociales. Es imprescindible:
 
 - Fijar un nombre de dominio para la web de login de cada servicio (youtube, facebook, etc), por ejemplo:
 
-  - https://youtube.analytics.<your wildcard DNS name>
-  - https://facebook.analytics.<your wildcard DNS name>
+  - `https://youtube.analytics.<your wildcard DNS name>`
+  - `https://facebook.analytics.<your wildcard DNS name>`
   
 - Configurar los DNS públicos para que dichos nombres de dominio se dirijan a la dirección IP pública asignada al Ingress de nuestro cluster de Kubernetes.
 - Incluir esas URLs como orígenes válidos en las aplicaciones sociales correspondientes, como se indica [aqui](../../docker/README.md)
@@ -87,11 +98,11 @@ youtube:
           "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
           "client_secret": "xxx...xxx",
           "redirect_uris": [
-              "https://youtube.analytics.urbo2.es/oauth2callback",
+              "https://youtube.analytics.<your wildcard domain>/oauth2callback",
               "https://localhost:8443/oauth2callback"
           ],
           "javascript_origins": [
-              "https://youtube.analytics.urbo2.es",
+              "https://youtube.analytics.<your wilcard domain>",
               "https://localhost:8443"
           ]
       }
@@ -125,9 +136,9 @@ Por este motivo, el nombre de dominio asignado al ingress de Kubernetes es muy i
 # SEE https://github.com/jetstack/cert-manager/issues/2794
 hostnames:
   facebook:
-  - "facebook.analytics.urbo2.es"
+  - "facebook.analytics.<your wildcard domain>"
   youtube:
-  - "youtube.analytics.urbo2.es"
+  - "youtube.analytics.<your wildcard domain"
 ```
 
 Es muy importante que el primer hostname de la lista para cada red social tenga **menos de 64 caracteres** de longitud (véase https://github.com/jetstack/cert-manager/issues/2794).
