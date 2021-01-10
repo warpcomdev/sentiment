@@ -58,8 +58,11 @@ SERVICE_NAME = os.environ.get("SERVICE_NAME", "youtubereporting")
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 API_VERSION = os.environ.get("API_VERSION", "v1")
 API_SCOPES = [
+    # Youtube
     'https://www.googleapis.com/auth/youtube.readonly',
-    'https://www.googleapis.com/auth/yt-analytics.readonly'
+    'https://www.googleapis.com/auth/yt-analytics.readonly',
+    # Google My Business
+    'https://www.googleapis.com/auth/business.manage'
 ]
 
 # SECRET MANAGEMENT SECTION
