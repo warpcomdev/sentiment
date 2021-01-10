@@ -6,6 +6,7 @@ import base64
 import json
 import xdrlib
 from typing import Any, Optional
+from functools import lru_cache
 import requests
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
@@ -41,6 +42,7 @@ if os.getenv("DEBUG", "0") == "1":
 from dotenv import load_dotenv
 load_dotenv(verbose=True)
 
+@lru_cache
 def fromjson(path: str) -> str:
     """Read json object from file"""
     with open(path, "r", encoding='utf-8') as jsonfile:
@@ -167,8 +169,7 @@ def test():
 @app.route('/authorize')
 def authorize():
     # Create flow instance to manage the OAuth 2.0 Authorization Grant Flow steps.
-    client_secret = fromjson(CLIENT_SECRET_PATH)
-    flow = google_auth_oauthlib.flow.Flow.from_client_config(client_secret,
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(fromjson(CLIENT_SECRET_PATH),
                                                              scopes=API_SCOPES)
 
     # The URI created here must exactly match one of the authorized redirect URIs
@@ -196,7 +197,7 @@ def oauth2callback():
     # verified in the authorization server response.
     state = flask.session['state']
 
-    flow = google_auth_oauthlib.flow.Flow.from_client_config(CLIENT_SECRET,
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(fromjson(CLIENT_SECRET_PATH),
                                                              scopes=API_SCOPES,
                                                              state=state)
     flow.redirect_uri = flask.url_for('oauth2callback', _external=True)
