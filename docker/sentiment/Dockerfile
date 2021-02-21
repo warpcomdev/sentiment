@@ -3,13 +3,19 @@
 FROM python:3.8-slim
 
 RUN mkdir /app
+WORKDIR /app
 
 # Compile requered wheels
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt update -q && \
     apt install -y python3-dev libhunspell-dev build-essential && \
-    cd /app && \
     pip wheel hunspell
+
+# Compile app
+COPY . /app/
+RUN --mount=type=cache,target=~/.cache/pip \
+    python3 -m pip install --upgrade build && \
+    python3 -m build
 
 FROM python:3.8-slim
 
@@ -32,7 +38,7 @@ RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/
         hunspell-gl hunspell-ca
 
 # Add application
-ADD sentiment.py /app/sentiment.py
+RUN pip install /app/dist/*.whl
 
 # Boot application
 ENV LC_ALL=C.UTF-8

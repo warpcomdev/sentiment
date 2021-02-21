@@ -63,7 +63,7 @@ class Pipeline:
     """Pipeline built with Hugginface's transformers"""
     def __init__(self, model_name, cache_dir=None):
         """Init the pipeline from the given model name"""
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
         self.model = AutoModelForSequenceClassification.from_pretrained(
             model_name, cache_dir=cache_dir)
 

@@ -1,5 +1,6 @@
 .vscode
 .env
+.ipynb_checkpoints
 venv
 node_modules
 .mypy_cache
@@ -7,3 +8,7 @@ __pycache__
 *.pyc
 *.pyo
 secrets
+sentiment.egg-info
+src/sentiment.egg-info
+build
+dist

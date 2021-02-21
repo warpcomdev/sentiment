@@ -6,9 +6,11 @@ Esta aplicación se basa en [BERT (Bidirectional Encoding Representation from Tr
 
 La aplicación utiliza un modelo BERT multilingüe [pre-entrenado con un conjunto de datos de dominio público](https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment) que incluye opiniones en 6 idiomas: Inglés, Alemán, Danés, Francés, Español e Italiano. El modelo predice el sentimiento asignando un score entre 1 (muy negativo) y 5 (muy positivo).
 
-La aplicación se distribuye en forma de imagen Docker, incluyendo este directorio el fichero [Dockerfile](Dockerfile) necesario para construirla.
+La aplicación se distribuye como imagen Docker, incluyendo este directorio el fichero [Dockerfile](Dockerfile) necesario para construirla.
 
-## Construcción
+Dentro de la imagen, es posible importar la librería `sentiment` para usar las funciones de análisis de sentimiento directamente, sin usar la API REST.
+
+## Construcción imagen Docker
 
 La construcción de la imagen requiere de Docker. Desde este directorio, la imagen puede construirse con:
 
@@ -60,7 +62,7 @@ docker run --rm -v /opt/sentiment/var:/var/cache/sentiment \
   sentiment:latest
 ```
 
-En cualquiera de los casos, con estos parámetros, la aplicación descargará el modelo a la ruta `/opt/sentiment` (montada dentro del contenedor en la ruta `/var/cahe/sentiment`), y escuchará peticiones en el puerto 3000.
+En cualquiera de los casos, con estos parámetros, la aplicación descargará el modelo a la ruta `/opt/sentiment` (montada dentro del contenedor en la ruta `/var/cache/sentiment`), y escuchará peticiones en el puerto 3000.
 
 Las peticiones deberán enviarse con una cabecera `Authorization: Bearer ...` (utilizando el mismo tken que se haya especificado en la variable de entorno `MODEL_TOKEN`).
 
