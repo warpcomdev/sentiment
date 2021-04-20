@@ -8,11 +8,7 @@ Las interacciones con redes de datos se almacenan en una tabla `cx_engagement` c
 - `channel`: Canal al que pertenecen los datos. El concepto de canal depende de la red social. Por ejemplo:
 
   - En twitter, cada cuenta de usuario se considera un canal.
-<<<<<<< HEAD
   - En youtube, se usan los canales de youtube para agregar.
-=======
-  - En youtube, los canales se corresponden a canales de vídeo.
->>>>>>> 2775ad1d538c92ea9ea02ecbdb5978740f45a95c
 
 - `day`: Día al que pertenecen las estadísticas.
 - `total_followers`: Total de followers / subscribers acumulados hasta ese día.
