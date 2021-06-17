@@ -24,7 +24,7 @@ Es también imprescindible que se habilite el acceso a las siguientes APIs en el
 
 ### Obtención de credenciales oAuth
 
-Una vez creado un proyecto en el dashboard de Google API, y activadas las APIs de Youtube, es necesario obtener un fichero de credenciales para autenticación oAuth2.
+Una vez creado un proyecto en el dashboard de Google API, y activadas las APIs de Youtube y Google My Business, es necesario obtener un fichero de credenciales para autenticación oAuth2.
 
 El flujo de autorización oAuth2 que debe seleccionarse es **web server app**. La documentación relativa a este flujo de autorización se encuentra aquí: https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps.
 
