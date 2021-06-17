@@ -18,6 +18,7 @@ Es también imprescindible que se habilite el acceso a las siguientes APIs en el
 - Youtube Data API v3
 - Youtube Reporting API
 - Youtube Analytics API
+- Google My Business API
 
 ![youtube APIs](static/img/youtube_api.png)
 
