@@ -1,8 +1,6 @@
-export SENTIMENT_URL=...
-export SENTIMENT_TOKEN=...
-export POSTGRES_HOST=127.0.0.1
-export POSTGRES_PORT=5432
-export POSTGRES_USER=postgres
-export POSTGRES_PASS=postgres
-export POSTGRES_DB=...
-export POSTGRES_SCHEMA=...
+export ORION_USERNAME=admin_servicio
+export ORION_PASSWORD=password_servicio
+export ORION_SERVICE=servicio
+export ORION_SUBSERVICE=/customerexperience
+export KEYSTONE_URL=http://iot.demo.urbo2.es:5001
+export ORION_URL=http://iot.demo.urbo2.es:1026
