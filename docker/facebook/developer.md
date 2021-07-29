@@ -77,6 +77,7 @@ En este caso, se debe enviar la aplicación para su revisión, solicitando los s
 - `instagram_basic`
 - `pages_read_engagement`
 - `read_insights`
+- `business_management`
 
 ### Generación de token de usuario
 
