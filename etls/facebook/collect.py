@@ -4,6 +4,7 @@
 import sys
 import os
 import json
+import traceback
 import logging
 from multiprocessing.pool import ThreadPool
 from typing import Sequence, Mapping, Optional, Generator, Any
@@ -30,7 +31,7 @@ def follow(
     headers: Optional[Mapping[str, str]] = None,
     params: Optional[Mapping[str, str]] = None
 ) -> Generator[Mapping[str, Any], None, None]:
-    """Uses pagination to keep fetching JSON data from url, raise FetchError on error"""
+    """Uses pagination to keep fetching JSON data from 'next' url, raise FetchError on error"""
     while url != "":
         resp = session.get(url, headers=headers, params=params)
         # If not found, return
@@ -47,6 +48,38 @@ def follow(
         if next_page == url:
             return
         # Params are attached to the paging url
+        url = next_page
+        params = None
+
+
+def backwards(
+    session: orion.Session,
+    url: str,
+    headers: Optional[Mapping[str, str]] = None,
+    params: Optional[Mapping[str, str]] = None,
+    max_backwards: Optional[int] = 3
+) -> Generator[Mapping[str, Any], None, None]:
+    """Uses pagination to keep fetching JSON data from 'previous' url, raise FetchError on error"""
+    count = 0
+    while url != "":
+        resp = session.get(url, headers=headers, params=params)
+        # If not found, return
+        if resp is None:
+            return
+        body = resp.json()
+        for item in body['data']:
+            yield item
+        # Find out if there are pages left
+        paging = body.get('paging', None)
+        if paging is None:
+            return
+        next_page = paging.get('previous', "").strip()
+        if next_page == url:
+            return
+        # Params are attached to the paging url
+        count += 1
+        if count >= max_backwards:
+            return
         url = next_page
         params = None
 
@@ -86,7 +119,7 @@ def row_to_kpi(row, id: str, timeinstant: str, source: str, product: str, name: 
             "value": product
         },
         "name": {
-            "type": "Text",
+            "type": "TextUnrestricted",
             "value": row[name]
         },
         "description": {
@@ -100,7 +133,7 @@ def row_to_kpi(row, id: str, timeinstant: str, source: str, product: str, name: 
     }
     if agg in row and row[agg]:
         data["aggregatedData"] = {
-            "type": "Text",
+            "type": "TextUnrestricted",
             "value": row[agg]
         }
     return data
@@ -117,40 +150,73 @@ class Page:
     """Facebook Page"""
     name: str
     id: str
+    instagram_id: str
     token: str
 
-    def insights(self,
+    def facebook_insights(self,
+                 pool: ThreadPool,
+                 session: orion.Session,
+                 metrics: pd.DataFrame,
+                 chunk_size: int = 16) -> pd.DataFrame:
+        """Get page insights"""
+
+        # Facebook page insights API:
+        # See https://developers.facebook.com/docs/graph-api/reference/v11.0/insights
+        # All metrics are considered daily
+        metrics = tuple(metrics.index)
+        logging.info("Page[%s].insights(metrics=%s, period=%s, chunk_size=%d)",
+                     self.name, metrics, 'day', chunk_size)
+        headers = {'Accept': 'application/json'}
+        mchunks = [
+            metrics[i:i + chunk_size]
+            for i in range(0, len(metrics), chunk_size)
+        ]
+        def follower(chunk):
+            url = f'https://graph.facebook.com/v11.0/{self.id}/insights'
+            params = {
+                'period': 'day',
+                'access_token': self.token,
+                'metric': json.dumps(chunk),
+                'date_preset': 'last_7d'
+            }
+            return tuple(follow(session, url, headers=headers, params=params))
+        return pd.DataFrame(chain(*pool.map(follower, mchunks)))
+
+    def instagram_insights(self,
                  pool: ThreadPool,
                  session: orion.Session,
                  metrics: Sequence[str],
                  period: str = 'day',
                  chunk_size: int = 16) -> pd.DataFrame:
         """Get page insights"""
-        # Facebook page insights API:
-        # See https://developers.facebook.com/docs/graph-api/reference/v11.0/insights
-        logging.info("Page[%s].insights(metrics=%s, period=%s, chunk_size=%d)",
-                     self.name, metrics, period, chunk_size)
+        # Instagram page insights API:
+        # See https://developers.facebook.com/docs/instagram-api/guides/insights
+        daily_metrics = tuple(metrics[metrics["Granularity"]=="day"].index)
+        lifetime_metrics = tuple(metrics[metrics["Granularity"]=="lifetime"].index)
+        logging.info("Page[%s].instagram_insights(metrics=%s, chunk_size=%d)",
+                     self.name, metrics, chunk_size)
         headers = {'Accept': 'application/json'}
-        mchunks = [
-            metrics[i:i + chunk_size]
-            for i in range(0, len(metrics), chunk_size)
+        daily_chunks = [
+            ('day', daily_metrics[i:i + chunk_size])
+            for i in range(0, len(daily_metrics), chunk_size)
         ]
-
-        def follower(chunk):
-            url = f'https://graph.facebook.com/v11.0/{self.id}/insights'
+        lifetime_chunks = [
+            ('lifetime', lifetime_metrics[i:i + chunk_size])
+            for i in range(0, len(lifetime_metrics), chunk_size)
+        ]
+        def follower(period_chunk):
+            period, chunk = period_chunk
+            url = f'https://graph.facebook.com/v11.0/{self.instagram_id}/insights'
             params = {
                 'period': period,
                 'access_token': self.token,
                 'metric': json.dumps(chunk)
             }
-            if period == 'day':
-                params['date_preset']: 'last_7d'
-            return tuple(follow(session, url, headers=headers, params=params))
+            return tuple(backwards(session, url, headers=headers, params=params))
+        return pd.DataFrame(chain(*pool.map(follower, chain(daily_chunks, lifetime_chunks))))
 
-        data = pd.DataFrame(chain(*pool.map(follower, mchunks)))
-        logging.info("Page[%s].insights input columns: %s", self.name,
-                     data.columns)
-
+    def normalize(self, data: pd.DataFrame):
+        """Normalize a DataFrame of events built from insights"""
         # 'Values' column is a list of values.
         # Concatenate all lists in a single row per metric,
         # and then explode into one row per value.
@@ -182,6 +248,7 @@ class Page:
         data = data.explode('keyed')
         data = explode_df_column(data.drop(columns=['value']), 'keyed')
         data = data.dropna(subset=['value'])
+        data = data.reset_index()
         logging.info("Page[%s].insights final columns: %s", self.name,
                      data.columns)
         return data
@@ -212,10 +279,62 @@ class Api:
             pages = {
                 page['name']: Page(name=page['name'],
                                    id=page['id'],
+                                   instagram_id=page['instagram_id'],
                                    token=page['access_token'])
                 for page in data['pages']
             }
         return cls(user_token=data['user_token'], pages=pages)
+
+
+def load_metrics(api: Api, cb: orion.ContextBroker, session: orion.Session, metrics_file: str, bookmark: str, insightFunc: str):
+    """
+    Load metrics from file, using the provided insightFunc
+    (any of 'facebook_insights', 'instagram_insights')
+    """
+    # Collecting the metrics is the easy part
+    metrics  = get_metrics(metrics_file)
+    logging.info("Collecting %s metrics %s", bookmark, metrics)
+    entities = list()
+    with ThreadPool(8) as pool:
+        for name, page in api.pages.items():
+            logging.info("Processing page %s", name)
+            insights = page.normalize(getattr(page, insightFunc)(pool, session, metrics))
+            entities.extend(row_to_kpi(row, 'name', 'end_time', bookmark, name, 'title', 'description', 'value', 'key')
+                for index, row in insights.fillna('').iterrows())
+
+    # Now we try not to load same data twice, by using a "Bookmark" singleton
+    bookmarkType = "Bookmark"
+    bookmarkId = bookmark
+    logging.info("Collecting base timestamp for updates from entity %s type %s", bookmarkId, bookmarkType)
+    singleton = cb.get(session, bookmarkId, bookmarkType)
+    basestamp = ""
+    if singleton is not None:
+        if "TimeInstant" in singleton:
+            basestamp = singleton["TimeInstant"]["value"]
+
+    # Group entities by day
+    logging.info("Splitting entities by day to skip before '%s'", basestamp)
+    dailyentities = defaultdict(list)
+    for entity in entities:
+        dailyentities[entity['TimeInstant']['value']].append(entity)
+
+    # Only keep days between last basestamp, and today
+    logging.info("Filtering out duplicated or future days")
+    today = datetime.today().strftime('%Y-%m-%dT%H:%M:%S')
+    days = [day for day in sorted(dailyentities.keys()) if
+            day[:19] < today[:19] and
+           ((basestamp == "") or (day[:19] > basestamp[:19]))
+    ]
+
+    for day in days:
+        logging.info("Batching updates for %s, day %s", bookmarkId, day)
+        cb.batch(session, dailyentities[day])
+        logging.info("Updating bookmark id %s, type %s, day %s", bookmarkId, bookmarkType, day)
+        updateBookmark = cb.putAttribs
+        if basestamp == "":
+            updateBookmark = cb.post
+            basestamp = day
+        updateBookmark(session, bookmarkId, bookmarkType, { "TimeInstant": { "type": "DateTime", "value": day }})
 
 
 def main():
@@ -226,28 +345,6 @@ def main():
 
     api = Api.from_file(
         sys.argv[1] if len(sys.argv) > 1 else 'credentials_turismo.json')
-    #pylint: disable=broad-except
-    # ENGINE = sqlalchemy.create_engine(build_postgres_uri(),
-    #     pool_use_lifo=True, pool_pre_ping=True)
-    # try:
-    #     ENGINE.connect()
-    # except Exception as err:
-    #     logging.error("KO - Failed to connect to database: %s", err)
-    #     sys.exit(-1)
-
-    metrics = get_metrics("metrics.csv")
-    #DAILY_METRICS = tuple(METRICS[METRICS['Granularity'] == 'day'].index)
-    daily_metrics = tuple(metrics.index)
-    logging.info("Collecting daily metrics %s", daily_metrics)
-
-    session = orion.Session()
-    entities = list()
-    with ThreadPool(8) as pool:
-        for name, page in api.pages.items():
-            logging.info("Processing page %s", name)
-            insights = page.insights(pool, session, daily_metrics).reset_index()
-            entities.extend(row_to_kpi(row, 'name', 'end_time', 'facebook', name, 'title', 'description', 'value', 'key')
-                for index, row in insights.fillna('').iterrows())
 
     keystoneURL = os.getenv("KEYSTONE_URL")
     orionURL = os.getenv("ORION_URL")
@@ -257,44 +354,16 @@ def main():
     password = os.getenv("ORION_PASSWORD")
     
     logging.info("Authenticating to url %s, service %s, username %s", keystoneURL, service, username)
+    session = orion.Session()
     cb = orion.ContextBroker(
         keystoneURL=keystoneURL,
         orionURL=orionURL,
         service=service,
         subservice=subservice)
     cb.auth(session, username, password)
-
-    # Get day singleton
-    bookmarkType = "Bookmark"
-    bookmarkId = "facebook"
-    logging.info("Collecting base timestamp for updates from entity %s type %s", bookmarkId, bookmarkType)
-    singleton = cb.get(session, bookmarkId, bookmarkType)
-    basestamp = ""
-    if singleton is not None:
-        if "TimeInstant" in singleton:
-            basestamp = singleton["TimeInstant"]["value"]
-
-    logging.info("Splitting entities by day to skip before '%s'", basestamp)
-    dailyentities = defaultdict(list)
-    for entity in entities:
-        dailyentities[entity['TimeInstant']['value']].append(entity)
-
-    today = datetime.today().strftime('%Y-%m-%dT%H:%M:%S')
-    days = sorted(dailyentities.keys())
-    for day in days:
-        if basestamp != "" and day[:19] <= basestamp[:19]:
-            logging.info("Skipping entities for day %s", day)
-            continue
-        if day[:19] >= today[:19]:
-            logging.info("Skipping entities for day %s", day)
-            continue
-        logging.info("Posting Entities to url %s, subservice %s, day %s", orionURL, subservice, day)
-        cb.batch(session, dailyentities[day])
-        logging.info("Updating bookmark id %s, type %s, day %s", bookmarkId, bookmarkType, day)
-        if not basestamp:
-            cb.post(session, bookmarkId, bookmarkType, { "TimeInstant": { "type": "DateTime", "value": day }})
-        else:
-            cb.putAttribs(session, bookmarkId, bookmarkType, { "TimeInstant": { "type": "DateTime", "value": day }})
+    
+    load_metrics(api, cb, session, 'facebook_metrics.csv',  'facebook',  'facebook_insights')
+    load_metrics(api, cb, session, 'instagram_metrics.csv', 'instagram', 'instagram_insights')
 
 
 if __name__ == "__main__":
@@ -308,4 +377,4 @@ if __name__ == "__main__":
         print("ETL OK")
     except Exception as err:
         print("ETL KO")
-        print(err)
+        traceback.print_exc()
