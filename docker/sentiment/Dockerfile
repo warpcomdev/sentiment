@@ -43,5 +43,5 @@ RUN pip install /app/dist/*.whl
 # Boot application
 ENV LC_ALL=C.UTF-8
 WORKDIR /app
-CMD gunicorn --bind 0.0.0.0:${MODEL_PORT:-3000} sentiment:app -t 120 \
+CMD gunicorn --bind 0.0.0.0:${MODEL_PORT:-3000} "sentiment:setupApp()" -t 120 \
              --access-logfile - --error-logfile -
