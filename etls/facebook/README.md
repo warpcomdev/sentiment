@@ -22,7 +22,8 @@ Los datos se obtienen a través de la API pública de Facebook Page Insights. En
 
 La información accesible a través de la API pública es limitada en alcance y duración. El siguiente cuadro recoge las limitaciones actualmente publicadas en la página anterior:
 
-![Limitaciones graph API](img/facebook_limitations.png)
+![Limitaciones graph API Facebook](img/facebook_limitations.png)
+![Limitaciones graph API Instagram](img/instagram_limitations.png)
 
 ### Obtención
 

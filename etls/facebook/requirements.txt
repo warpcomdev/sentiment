@@ -14,3 +14,4 @@ pytz==2020.4
 requests==2.24.0
 six==1.15.0
 urllib3==1.25.11
+orion @ git+https://github.com/warpcomdev/sentiment#pkg=orion&subdirectory=libs/orion
