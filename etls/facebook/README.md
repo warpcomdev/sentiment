@@ -4,7 +4,16 @@ Esta carpeta contiene la ETL de análisis de datos de facebook.
 
 ## Métricas
 
-La ETL recopila de las APIs de Facebook e Instagra una lista de métricas configurable. Por cada una de las métricas, la ETL genera una entidad de tipo `KeyPerformanceIndicator`, con su valor diario.
+La ETL recopila de las APIs de Facebook e Instagra una lista de métricas configurable. Por cada una de las métricas, la ETL escribe en el Context Broker una entidad de tipo `KeyPerformanceIndicator`, con el valor diario de cada métrica:
+
+- El `ID` de la entidad `KeyPerformanceIndicator` es el nombre de la métrica
+- El `TimeInstant` coincide con la fecha reportada por Fecabook para la métrica. Por defecto, la ETL recopila métricas de hasta 5 días atrás, para tolerar cierto número de fallos.
+- El `kpiValue` se establece al valor de la métrica.
+- El `source` de la entidad se establece a `facebook` o `instagram`.
+- El `product` se establece al nombre de la página cuyas estadísticas se recopilan (por la manera en que fucniona la API, las cuentas de instagram también están vinculadas a una página de Facebook).
+- El `name` y `description` se establecen al nombre y descripción de la métrica.
+- Cuando la métrica está segmentada (por ejemplo, idioma del navegador), el campo `aggData` se establece al valor del segmento (`es_ES`, `en_US`, etc). 
+
 
 La lista de métricas que debe recopilar se enumera en los ficheros [facebook_metrics.csv`](facebook_metrics.csv) e [instagram_metrics.csv](instagram_metrics.csv), que contienen en cada fila:
 
@@ -17,7 +26,7 @@ La lista de métricas que debe recopilar se enumera en los ficheros [facebook_me
 
 Aunque la API soporta otras granularidades (`week`, `days_28`), la ETL no hace uso de ellas.
 
-El contenido inicial de estos ficheros se ha creado con lalista completa de métricas disponibles en la versión 11.0 de la API de Facebook, que puede consultarse en estos enlaces:
+El contenido inicial de estos ficheros se ha generado a partir de la lista completa de métricas disponibles en la versión 11.0 de la API de Facebook. Dicha lista, junto con la descripción de todas sus métricas, puede consultarse en estos enlaces:
 
 - https://developers.facebook.com/docs/graph-api/reference/v11.0/insights
 - https://developers.facebook.com/docs/instagram-api/reference/ig-user/insights
