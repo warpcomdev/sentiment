@@ -26,7 +26,7 @@ La aplicación se configura utilizando **variables de entorno**. A continuación
 - **MODEL_CACHE_DIR**: Ruta dentro del contenedor donde almacenar el modelo anterior, una vez descargado. Se recomienda usar un volumen persistente para evitar tener que volver a descargar el modelo cada vez que se arranca el servicio.
 - **MODEL_PORT**: Puerto en el que escuchará la API.
 - **MODEL_TOKEN**: Token a utilizar para autenticación tipo `Bearer` contra la API.
-- **MODEL_PROXY**: Debe establecerse a `true` si la API va a ser publicaa detrás de un proxy inverso.
+- **MODEL_PROXY**: Debe establecerse a `true` si la API va a ser publicada detrás de un proxy inverso.
 - **MODEL_DEBUG**: `true` para habilitar el log detallado.
 
 Estas variables deben especificarse al ejecutar el contenedor, por ejemplo:
