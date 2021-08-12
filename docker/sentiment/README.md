@@ -77,3 +77,16 @@ curl http://localhost:3000/spec
 Este documento puede inspeccionarse con cualquier editor que soporte swagger, como https://editor.swagger.io/.
 
 Para facilitar la inspección de la API, el resultado de este comando se ha almacenado en el fichero [api.json](api.json), que puede ser inspeccionado accediendo al enlace [https://petstore.swagger.io/?url=https://raw.githubusercontent.com/warpcomdev/sentiment/master/docker/api.json].
+
+## Importación
+
+La aplicación también puede importarse como una libreria, que publica los tipos `Pipeline` y `Spellcheck` para su uso directo en otras aplicaciones, sin recurrir a la API https.
+
+La librería puede instalarse directamente desde github, con el comando
+
+```bash
+Instalar con:
+
+```bash
+pip install "git+https://github.com/warpcomdev/sentiment#pkg=sentiment&subdirectory=docker/sentiment"
+```
