@@ -2,20 +2,11 @@
 
 Esta carpeta contiene la ETL de análisis de datos de facebook.
 
-## Métricas
+## Carga de datos
 
-La ETL recopila de las APIs de Facebook e Instagra una lista de métricas configurable. Por cada una de las métricas, la ETL escribe en el Context Broker una entidad de tipo `KeyPerformanceIndicator`, con el valor diario de cada métrica:
+### Métricas
 
-- El `ID` de la entidad `KeyPerformanceIndicator` es el nombre de la métrica
-- El `TimeInstant` coincide con la fecha reportada por Fecabook para la métrica. Por defecto, la ETL recopila métricas de hasta 5 días atrás, para tolerar cierto número de fallos.
-- El `kpiValue` se establece al valor de la métrica.
-- El `source` de la entidad se establece a `facebook` o `instagram`.
-- El `product` se establece al nombre de la página cuyas estadísticas se recopilan (por la manera en que fucniona la API, las cuentas de instagram también están vinculadas a una página de Facebook).
-- El `name` y `description` se establecen al nombre y descripción de la métrica.
-- Cuando la métrica está segmentada (por ejemplo, idioma del navegador), el campo `aggData` se establece al valor del segmento (`es_ES`, `en_US`, etc). 
-
-
-La lista de métricas que debe recopilar se enumera en los ficheros [facebook_metrics.csv`](facebook_metrics.csv) e [instagram_metrics.csv](instagram_metrics.csv), que contienen en cada fila:
+La ETL recopila de las APIs de Facebook e Instagra una lista de métricas configurable. La lista de métricas que debe recopilar se enumera en los ficheros [facebook_metrics.csv](facebook_metrics.csv) e [instagram_metrics.csv](instagram_metrics.csv), que contienen en cada fila:
 
 - El nombre de la métrica (`Metric`).
 - La descripción (`Description`).
@@ -87,7 +78,7 @@ page_get_directions_clicks_by_site_logged_in_unique,"Number of people who logged
 page_get_directions_clicks_logged_in_by_city_unique,"Number of people who logged in to Facebook and clicked the Get Directions button, broken down by city.",day
 page_get_directions_clicks_logged_in_by_country_unique,"Number of people who logged in to Facebook and clicked the Get Directions button, broken down by country.",day
 page_get_directions_clicks_logged_in_unique,Number of people who logged in to Facebook and clicked the Get Directions button.,day
-page_impressions*,"The number of times any content from your Page or about your Page entered a person's screen. This includes posts, stories, check-ins, ads, social information from people who interact with your Page and more.",day
+page_impressions,"The number of times any content from your Page or about your Page entered a person's screen. This includes posts, stories, check-ins, ads, social information from people who interact with your Page and more.",day
 page_impressions_by_age_gender_unique,"The number of people who saw any content by your Page or about your Page, grouped by age and gender. This number is an estimate.",day
 page_impressions_by_city_unique,The number of people who have seen any content associated with your Page by city.,day
 page_impressions_by_country_unique,The number of people who have seen any content associated with your Page by country.,day
@@ -95,16 +86,16 @@ page_impressions_by_locale_unique,The number of people who have seen any content
 page_impressions_by_story_type,Total impressions of posts published by a friend about your Page by type. (See possible types),day
 page_impressions_by_story_type_unique,The number of people who saw posts published by a friend about your Page by type. (See possible types),day
 page_impressions_frequency_distribution,The number of people your Page reached broken down by how many times people saw any content about your Page.,day
-page_impressions_nonviral*,"The number of times any content from your Page entered a person's screen. This does not include content created about your Page with social information attached. Social information displays when a person's friend interacted with your Page, post or story. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
-page_impressions_nonviral_unique*,"The number of people who had any content from your Page enter their screen. This does not include content created about your Page with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with your Page, post or story. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
-page_impressions_organic*,"The number of times any content from your Page or about your Page entered a person's screen through unpaid distribution. This includes posts, stories, check-ins, social information from people who interact with your Page and more.",day
-page_impressions_organic_unique*,"The number of people who had any content from your Page or about your Page enter their screen through unpaid distribution. This includes posts, stories, check-ins, social information from people who interact with your Page and more.",day
-page_impressions_paid*,The number of times any content from your Page or about your Page entered a person's screen through paid distribution such as an ad.,day
-page_impressions_paid_unique*,The number of people who had any content from your Page or about your Page enter their screen through paid distribution such as an ad.,day
-page_impressions_unique*,"The number of people who had any content from your Page or about your Page enter their screen. This includes posts, stories, check-ins, ads, social information from people who interact with your Page and more.",day
-page_impressions_viral*,"The number of times any content from your Page or about your Page entered a person's screen with social information attached. Social information displays when a person's friend interacted with your Page, post or story. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
+page_impressions_nonviral,"The number of times any content from your Page entered a person's screen. This does not include content created about your Page with social information attached. Social information displays when a person's friend interacted with your Page, post or story. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
+page_impressions_nonviral_unique,"The number of people who had any content from your Page enter their screen. This does not include content created about your Page with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with your Page, post or story. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
+page_impressions_organic,"The number of times any content from your Page or about your Page entered a person's screen through unpaid distribution. This includes posts, stories, check-ins, social information from people who interact with your Page and more.",day
+page_impressions_organic_unique,"The number of people who had any content from your Page or about your Page enter their screen through unpaid distribution. This includes posts, stories, check-ins, social information from people who interact with your Page and more.",day
+page_impressions_paid,The number of times any content from your Page or about your Page entered a person's screen through paid distribution such as an ad.,day
+page_impressions_paid_unique,The number of people who had any content from your Page or about your Page enter their screen through paid distribution such as an ad.,day
+page_impressions_unique,"The number of people who had any content from your Page or about your Page enter their screen. This includes posts, stories, check-ins, ads, social information from people who interact with your Page and more.",day
+page_impressions_viral,"The number of times any content from your Page or about your Page entered a person's screen with social information attached. Social information displays when a person's friend interacted with your Page, post or story. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
 page_impressions_viral_frequency_distribution,"The number of people your Page reached from a story published by a friend, broken down by how many times people saw stories about your Page.",day
-page_impressions_viral_unique*,"The number of people who had any content from your Page or about your Page enter their screen through with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with your Page, post or story. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
+page_impressions_viral_unique,"The number of people who had any content from your Page or about your Page enter their screen through with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with your Page, post or story. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
 page_negative_feedback,"The number of times people took a negative action (e.g., un-liked or hid a post).",day
 page_negative_feedback_by_type,The number of times people took a negative action broken down by type. (See possible types),day
 page_negative_feedback_by_type_unique,The number of people who took a negative action broken down by type. (See possible types),day
@@ -118,18 +109,18 @@ page_places_checkins_by_country,top countries of people who checked into your Pl
 page_places_checkins_by_locale,top locales of people who checked into your Place.,day
 page_positive_feedback_by_type,The number of times people took a positive action broken down by type. (See possible types),day
 page_positive_feedback_by_type_unique,The number of people who took a positive action broken down by type. (See possible types),day
-page_post_engagements*,"The number of times people have engaged with your posts through likes, comments and shares and more.",day
-page_posts_impressions*,"The number of times your Page's posts entered a person's screen. Posts include statuses, photos, links, videos and more.",day
+page_post_engagements,"The number of times people have engaged with your posts through likes, comments and shares and more.",day
+page_posts_impressions,"The number of times your Page's posts entered a person's screen. Posts include statuses, photos, links, videos and more.",day
 page_posts_impressions_frequency_distribution,"The number of people who saw your Page posts, broken down by how many times people saw your posts.",day
-page_posts_impressions_nonviral*,"The number of times your Page's posts entered a person's screen. This does not include content created about your Page with social information attached. Social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
-page_posts_impressions_nonviral_unique*,"The number of people who had any posts by your Page enter their screen. This does not include content created about your Page with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
-page_posts_impressions_organic*,The number of times your Page's posts entered a person's screen through unpaid distribution.,day
-page_posts_impressions_organic_unique*,The number of people who had any of your Page's posts enter their screen through unpaid distribution.,day
-page_posts_impressions_paid*,The number of times your Page's posts entered a person's screen through paid distribution such as an ad.,day
-page_posts_impressions_paid_unique*,The number of people who had any of your Page's posts enter their screen through paid distribution such as an ad.,day
-page_posts_impressions_unique*,"The number of people who had any of your Page's posts enter their screen. Posts include statuses, photos, links, videos and more.",day
-page_posts_impressions_viral*,"The number of times your Page's posts entered a person's screen with social information attached. Social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
-page_posts_impressions_viral_unique*,"The number of people who had any of your Page's posts enter their screen with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
+page_posts_impressions_nonviral,"The number of times your Page's posts entered a person's screen. This does not include content created about your Page with social information attached. Social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
+page_posts_impressions_nonviral_unique,"The number of people who had any posts by your Page enter their screen. This does not include content created about your Page with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
+page_posts_impressions_organic,The number of times your Page's posts entered a person's screen through unpaid distribution.,day
+page_posts_impressions_organic_unique,The number of people who had any of your Page's posts enter their screen through unpaid distribution.,day
+page_posts_impressions_paid,The number of times your Page's posts entered a person's screen through paid distribution such as an ad.,day
+page_posts_impressions_paid_unique,The number of people who had any of your Page's posts enter their screen through paid distribution such as an ad.,day
+page_posts_impressions_unique,"The number of people who had any of your Page's posts enter their screen. Posts include statuses, photos, links, videos and more.",day
+page_posts_impressions_viral,"The number of times your Page's posts entered a person's screen with social information attached. Social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
+page_posts_impressions_viral_unique,"The number of people who had any of your Page's posts enter their screen with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",day
 page_posts_served_impressions_organic_unique,"The number of people who were served your Page's posts in their News Feed whether it entered their screen or not. Posts include statuses, photos, links, videos and more.",day
 page_tab_views_login_top,The number of times users logged in to Facebook saw tabs on your Page. (See possible types),day
 page_tab_views_login_top_unique,The number of users logged in to Facebook who saw tabs on your Page. (See possible types),day
@@ -151,36 +142,36 @@ page_website_clicks_by_site_logged_in_unique,"Number of people who logged in to 
 page_website_clicks_logged_in_by_city_unique,"Number of people who logged in to Facebook and clicked the goto website CTA button, broken down by city.",day
 page_website_clicks_logged_in_by_country_unique,"Number of people who logged in to Facebook and clicked the goto website CTA button, broken down by country.",day
 page_website_clicks_logged_in_unique,Number of people who logged in to Facebook and clicked the goto website CTA button.,day
-post_activity*,The number of stories generated about your Page post ('Stories').,lifetime
-post_activity_by_action_type*,"The number of stories created about your Page post, by action type.",lifetime
-post_activity_by_action_type_unique*,"The number of people who created a story about your Page post, by action type.",lifetime
-post_activity_unique*,The number of people who created a story about your Page post ('People Talking About This' / PTAT).,lifetime
-post_clicks*,The number of times people clicked on anywhere in your posts without generating a story.,lifetime
-post_clicks_by_type*,"The number of times people clicked on anywhere in your posts without generating a story, by consumption type.",lifetime
-post_clicks_by_type_unique*,"The number of people who clicked anywhere in your post without generating a story, by consumption type.",lifetime
-post_clicks_unique*,The number of people who clicked anywhere in your post without generating a story.,lifetime
+post_activity,The number of stories generated about your Page post ('Stories').,lifetime
+post_activity_by_action_type,"The number of stories created about your Page post, by action type.",lifetime
+post_activity_by_action_type_unique,"The number of people who created a story about your Page post, by action type.",lifetime
+post_activity_unique,The number of people who created a story about your Page post ('People Talking About This' / PTAT).,lifetime
+post_clicks,The number of times people clicked on anywhere in your posts without generating a story.,lifetime
+post_clicks_by_type,"The number of times people clicked on anywhere in your posts without generating a story, by consumption type.",lifetime
+post_clicks_by_type_unique,"The number of people who clicked anywhere in your post without generating a story, by consumption type.",lifetime
+post_clicks_unique,The number of people who clicked anywhere in your post without generating a story.,lifetime
 post_engaged_fan,People who have liked your Page and engaged with your post.,lifetime
-post_engaged_users*,The number of people who clicked anywhere in your posts.,lifetime
-post_impressions*,"The number of times your Page's post entered a person's screen. Posts include statuses, photos, links, videos and more.",lifetime
-post_impressions_by_story_type*,The number of times this post was seen via a story published by a friend of the person viewing the post.,lifetime
-post_impressions_by_story_type_unique*,"The number of people who saw your Page post in a story from a friend, by story type.",lifetime
-post_impressions_fan*,The number of impressions for your Page post by people who have liked your Page.,lifetime
-post_impressions_fan_paid*,The number of impressions for your Page post by people who like your Page in an Ad or Sponsored Story.,lifetime
-post_impressions_fan_paid_unique*,The number of people who have like your Page and saw your Page post in an Ad or Sponsored Story.,lifetime
-post_impressions_fan_unique*,The number of people who have like your Page who saw your Page post.,lifetime
-post_impressions_nonviral*,"The number of times your Page's post entered a person's screen. This does not include content created about your Page with social information attached. Social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",lifetime
-post_impressions_nonviral_unique*,"The number of people who had your Page's post enter their screen. This does not include content created about your Page with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",lifetime
-post_impressions_organic*,The number of times your Page's posts entered a person's screen through unpaid distribution.,lifetime
-post_impressions_organic_unique*,The number of people who had your Page's post enter their screen through unpaid distribution.,lifetime
-post_impressions_paid*,The number of times your Page's post entered a person's screen through paid distribution such as an ad.,lifetime
-post_impressions_paid_unique*,The number of people who had your Page's post enter their screen through paid distribution such as an ad.,lifetime
-post_impressions_unique*,"The number of people who had your Page's post enter their screen. Posts include statuses, photos, links, videos and more.",lifetime
-post_impressions_viral*,"The number of times your Page's post entered a person's screen with social information attached. Social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",lifetime
-post_impressions_viral_unique*,"The number of people who had your Page's post enter their screen with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",lifetime
-post_negative_feedback*,The number of times people took a negative action in your post (e.g. hid it).,lifetime
-post_negative_feedback_by_type*,The number of times people took a negative action in your post broken down by type.,lifetime
-post_negative_feedback_by_type_unique*,The number of people who took a negative action in your post broken down by type.,lifetime
-post_negative_feedback_unique*,"The number of people who took a negative action in your post (e.g., hid it).",lifetime
+post_engaged_users,The number of people who clicked anywhere in your posts.,lifetime
+post_impressions,"The number of times your Page's post entered a person's screen. Posts include statuses, photos, links, videos and more.",lifetime
+post_impressions_by_story_type,The number of times this post was seen via a story published by a friend of the person viewing the post.,lifetime
+post_impressions_by_story_type_unique,"The number of people who saw your Page post in a story from a friend, by story type.",lifetime
+post_impressions_fan,The number of impressions for your Page post by people who have liked your Page.,lifetime
+post_impressions_fan_paid,The number of impressions for your Page post by people who like your Page in an Ad or Sponsored Story.,lifetime
+post_impressions_fan_paid_unique,The number of people who have like your Page and saw your Page post in an Ad or Sponsored Story.,lifetime
+post_impressions_fan_unique,The number of people who have like your Page who saw your Page post.,lifetime
+post_impressions_nonviral,"The number of times your Page's post entered a person's screen. This does not include content created about your Page with social information attached. Social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",lifetime
+post_impressions_nonviral_unique,"The number of people who had your Page's post enter their screen. This does not include content created about your Page with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",lifetime
+post_impressions_organic,The number of times your Page's posts entered a person's screen through unpaid distribution.,lifetime
+post_impressions_organic_unique,The number of people who had your Page's post enter their screen through unpaid distribution.,lifetime
+post_impressions_paid,The number of times your Page's post entered a person's screen through paid distribution such as an ad.,lifetime
+post_impressions_paid_unique,The number of people who had your Page's post enter their screen through paid distribution such as an ad.,lifetime
+post_impressions_unique,"The number of people who had your Page's post enter their screen. Posts include statuses, photos, links, videos and more.",lifetime
+post_impressions_viral,"The number of times your Page's post entered a person's screen with social information attached. Social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",lifetime
+post_impressions_viral_unique,"The number of people who had your Page's post enter their screen with social information attached. As a form of organic distribution, social information displays when a person's friend interacted with you Page or post. This includes when someone's friend likes or follows your Page, engages with a post, shares a photo of your Page and checks into your Page.",lifetime
+post_negative_feedback,The number of times people took a negative action in your post (e.g. hid it).,lifetime
+post_negative_feedback_by_type,The number of times people took a negative action in your post broken down by type.,lifetime
+post_negative_feedback_by_type_unique,The number of people who took a negative action in your post broken down by type.,lifetime
+post_negative_feedback_unique,"The number of people who took a negative action in your post (e.g., hid it).",lifetime
 post_reactions_anger_total,"Total ""anger"" reactions of a post.",lifetime
 post_reactions_by_type_total,Total post reactions by type.,lifetime
 post_reactions_haha_total,"Total ""haha"" reactions of a post.",lifetime
@@ -209,6 +200,28 @@ reach,day,"Total number of unique users who have viewed at least one of the IG U
 text_message_clicks,day,"Total number of taps on the text message link in the IG User's profile."
 website_clicks,day,"Total number of taps on the website link in the IG User's profile."
 ```
+
+### Entidades
+
+Por cada una de las métricas anteriores, la ETL escribe en el Context Broker una entidad de tipo `KeyPerformanceIndicator`, con el valor diario de cada métrica:
+
+- El `ID` de la entidad `KeyPerformanceIndicator` es el nombre de la métrica.
+- El `TimeInstant` coincide con la fecha reportada por Facebook para la métrica.
+- El `kpiValue` se establece al valor de la métrica.
+- El `source` de la entidad se establece a `facebook` o `instagram`.
+- El `product` se establece al nombre de la página cuyas estadísticas se recopilan (por la manera en que funciona la API, las cuentas de instagram también están vinculadas a una página de Facebook).
+- El `name` y `description` se establecen al nombre y descripción de la métrica.
+- Cuando la métrica está segmentada (por ejemplo, idioma del navegador), el campo `aggData` se establece al valor del segmento (`es_ES`, `en_US`, etc). 
+
+La ETL recopila métricas de hasta 5 días atrás, para tolerar cierto número de fallos. Para evitar escribir varias veces en el context broker la misma métrica, la ETL utiliza una entidad de tipo **Bookmark** e ID **facebook** e **instagram** (respectivamente). Estas entidades se usan como marcadores que almacenan en su campo `TimeInstant` la fecha del últimop día cuyas métricas se cargaron en su totalidad. Cada vez que se ejecuta la ETL,
+
+- La ETL obtiene de la API de facebook información de los últimos 5 días.
+- La ETL comprueba si existe en el context broker la entidad **Bookmark** con el ID correspondiente.
+- Si existe, descarta todos los datos obtenidos de la API previos o de ese día, y solo escribe al Context Broker los datos de días posteriores.
+- Si no existe, escribe todos los datos al Context Broker.
+- Cada vez que termina con la carga de los datos de un día completo, actualiza la entidad **Bookmark** con la fecha de ese día.
+
+El motivo de que la ETL cargue siempre los últimos días, en lugar de limitarse a cargar desde la fecha guardada en el bookmark, es que los rangos de fecha que se pueden consultar en la API están limitados y hay unos ciertos presets con los que trabajar. Se ha preferido utilizar los presets en lugar de intentar forzar rangos de fecha.
 
 ## Instalación ETL
 

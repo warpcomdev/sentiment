@@ -376,5 +376,5 @@ if __name__ == "__main__":
         main()
         print("ETL OK")
     except Exception as err:
-        print("ETL KO")
+        print("ETL KO: ", err)
         traceback.print_exc()

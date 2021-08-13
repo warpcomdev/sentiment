@@ -34,32 +34,32 @@ class Session(threading.local):
         super().__init__()
         self.session = requests.Session()
 
-    def get(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None):
+    def get(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, **kw):
         """Utility method to perform a GET"""
-        resp = self.session.get(url, params=params, headers=headers)
+        resp = self.session.get(url, params=params, headers=headers, **kw)
         if resp.status_code == 404:
             return None
         if resp.status_code < 200 or resp.status_code > 204:
             raise FetchError(response=resp, method="GET", url=url, params=params, headers=headers)
         return resp
 
-    def post(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, body: Optional[Any] = None):
+    def post(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, body: Optional[Any] = None, **kw):
         """Utility method to perform a POST"""
-        resp = self.session.post(url, params=params, headers=headers, json=body)
+        resp = self.session.post(url, params=params, headers=headers, json=body, **kw)
         if resp.status_code < 200 or resp.status_code > 204:
             raise FetchError(response=resp, method="POST", url=url, params=params, headers=headers, body=body)
         return resp
 
-    def put(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, body: Optional[Any] = None):
+    def put(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, body: Optional[Any] = None, **kw):
         """Utility method to perform a POST"""
-        resp = self.session.put(url, params=params, headers=headers, json=body)
+        resp = self.session.put(url, params=params, headers=headers, json=body, **kw)
         if resp.status_code < 200 or resp.status_code > 204:
             raise FetchError(response=resp, method="PUT", url=url, params=params, headers=headers, body=body)
         return resp
 
-    def delete(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None):
+    def delete(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, **kw):
         """Utility method to perform a DELETE"""
-        resp = self.session.delete(url, params=params, headers=headers)
+        resp = self.session.delete(url, params=params, headers=headers, **kw)
         if resp.status_code == 404:
             return None
         if resp.status_code < 200 or resp.status_code > 204:
