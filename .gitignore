@@ -1,5 +1,6 @@
 .vscode
 .env
+.ini
 .ipynb_checkpoints
 venv
 node_modules
