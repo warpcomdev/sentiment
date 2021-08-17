@@ -4,6 +4,6 @@ charset-normalizer==2.0.4
 ConfigArgParse==1.5.2
 idna==3.2
 istacpy==0.7.0
-orion==1.0.0
+orion @ git+https://github.com/warpcomdev/sentiment@0aec196b7c1036febb2c2b387283b0fa66dc0b20#subdirectory=libs/orion
 requests==2.26.0
 urllib3==1.26.6
