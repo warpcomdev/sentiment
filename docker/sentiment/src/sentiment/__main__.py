@@ -8,6 +8,7 @@ import random
 import json
 from collections import Counter
 from functools import wraps
+from typing import Optional, Iterable, Generator, Sequence, Dict, Callable, TypeVar, Any
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
@@ -29,45 +30,46 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_swagger import swagger
 from flask_httpauth import HTTPTokenAuth
 from flask_cors import CORS
+
 auth = HTTPTokenAuth(scheme='Bearer')
+app = Flask(__name__)
+CORS(app)
 
-MODEL_ENV_DIR = os.getenv('MODEL_ENV_DIR', '/etc/sentiment')
-load_dotenv(MODEL_ENV_DIR)
+
+class Dependencies:
+    """Dependency object to consolidate all dependencies"""
+
+    __slots__ = ['token', 'spellcheck', 'pipeline', 'port', 'debug']
+
+    def __init__(self):
+        self.token: Optional[str] = None
+        self.spellcheck: Optional[Spellcheck] = None
+        self.pipeline: Optional[Pipeline] = None
+        self.port: Optional[int] = None
+        self.debug: Optional[bool] = None
 
 
-def as_boolean(val: str):
+DEPENDENCIES = Dependencies()
+
+
+def as_boolean(val: str) -> bool:
     """Turn a string into a boolean"""
     return val.lower() in ('y', 'yes', 't', 'true', 's', 'si', 'on', '1')
 
 
-MODEL_PROXY = as_boolean(os.getenv('MODEL_PROXY', default='f'))
-MODEL_CACHE_DIR = os.getenv('MODEL_CACHE_DIR', '/var/cache/sentiment')
-MODEL_PORT = int(os.getenv('MODEL_PORT', default='3000'))
-MODEL_NAME = os.getenv(
-    'MODEL_NAME', default='nlptown/bert-base-multilingual-uncased-sentiment')
-MODEL_DEBUG = as_boolean(os.getenv('MODEL_DEBUG', default='f'))
-MODEL_TOKEN = os.getenv(
-    'MODEL_TOKEN', ''.join(
-        random.choices(string.ascii_uppercase + string.ascii_lowercase +
-                       string.digits,
-                       k=32)))
-
-app = Flask(__name__)
-if MODEL_PROXY:
-    # Manage X-Forwarded-Proto
-    app.wsgi_app = ProxyFix(app.wsgi_app)
-CORS(app)
+Rating = Any
 
 
 class Pipeline:
     """Pipeline built with Hugginface's transformers"""
-    def __init__(self, model_name, cache_dir=None):
+    def __init__(self, model_name: str, cache_dir: Optional[str] = None):
         """Init the pipeline from the given model name"""
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name,
+                                                       cache_dir=cache_dir)
         self.model = AutoModelForSequenceClassification.from_pretrained(
             model_name, cache_dir=cache_dir)
 
-    def _batch(self, sentences):
+    def _batch(self, sentences: Iterable[str]) -> Iterable[Rating]:
         """Analize a batch of sentences"""
         tokens = self.tokenizer(sentences,
                                 padding=True,
@@ -78,14 +80,19 @@ class Pipeline:
         result = torch.softmax(logits, dim=1).tolist()
         return result
 
-    def __call__(self, sentences, batch_size=10):
+    def __call__(self,
+                 sentences: Sequence[str],
+                 batch_size: int = 10) -> Generator[Rating, None, None]:
         """Generate sentiment data for a list of sentences"""
         for index in range(0, len(sentences), batch_size):
             for row in self._batch(sentences[index:index + batch_size]):
                 yield row
 
 
-def memoize(func):
+RT = TypeVar('RT')
+
+
+def memoize(func: Callable[[str], RT]) -> Callable[[str], RT]:
     """Caching functions of one argument"""
     #pylint: disable=dangerous-default-value
     @wraps(func)
@@ -100,8 +107,11 @@ def memoize(func):
     return wrapped
 
 
+NLP = Any
+
+
 @memoize
-def _nlp(spacy_module):
+def _nlp(spacy_module: str) -> Optional[NLP]:
     print("Loading spacy language model for '", spacy_module, "'")
     if spacy_module == 'en':
         nlp = en_core_web_sm.load()
@@ -121,11 +131,15 @@ def _nlp(spacy_module):
 
 
 @memoize
-def _hunspell(hunspell_file):
+def _hunspell(hunspell_file: str) -> hunspell.HunSpell:
     print("Loading hunspell dictionary '", hunspell_file, "'")
     hunspell_folder = '/usr/share/hunspell'
     return hunspell.HunSpell(f'{hunspell_folder}/{hunspell_file}.dic',
                              f'{hunspell_folder}/{hunspell_file}.aff')
+
+
+Sentence = Dict[str, str] # Two knwon keys: 'lang' and 'text'
+TermCount = Dict[str, int]
 
 
 class Spellcheck:
@@ -143,7 +157,7 @@ class Spellcheck:
     }
 
     @classmethod
-    def _tokenizer(cls, lang):
+    def _tokenizer(cls, lang: str) -> Optional[NLP]:
         """Get the tokenizer for the specified lang"""
         lang_info = cls._langs.get(lang, None)
         if lang_info is None:
@@ -151,7 +165,7 @@ class Spellcheck:
         return _nlp(lang_info[0])
 
     @classmethod
-    def _checker(cls, lang):
+    def _checker(cls, lang: str) -> Optional[hunspell.HunSpell]:
         """Get the spell checker for the specified lang"""
         lang_info = cls._langs.get(lang, None)
         if lang_info is None:
@@ -164,9 +178,11 @@ class Spellcheck:
             Spellcheck._tokenizer(lang)
             Spellcheck._checker(lang)
 
-    def __call__(self, sentences):
+    def __call__(
+        self, sentences: Iterable[Sentence]
+    ) -> Generator[Optional[TermCount], None, None]:
         """Generate spell checked terms"""
-        def best_fit(term, checker):
+        def best_fit(term: str, checker: hunspell.HunSpell) -> str:
             suggest = checker(term)
             if len(suggest) <= 0:
                 return term
@@ -175,7 +191,7 @@ class Spellcheck:
                     return suggestion
             return term
 
-        def terms_of(sentence, lang):
+        def terms_of(sentence: str, lang: str) -> Optional[TermCount]:
             """Splits sentence into lemmas"""
             # Make sure we support the language
             checker = Spellcheck._checker(lang)
@@ -237,7 +253,7 @@ schema = {
 
 
 #pylint: disable=dangerous-default-value,redefined-outer-name
-def validate(item, schema=schema):
+def validate(item, schema: Any = schema) -> bool:
     """Validate item with json schema"""
     try:
         jsonschema.validate(instance=item, schema=schema)
@@ -247,9 +263,9 @@ def validate(item, schema=schema):
 
 
 @auth.verify_token
-def verify_token(token):
+def verify_token(token: str) -> Optional[str]:
     """Only the MODEL_TOKEN is currently supported"""
-    if token == MODEL_TOKEN:
+    if token == DEPENDENCIES.token:
         return 'admin'
     return None
 
@@ -290,7 +306,7 @@ def spec():
     return jsonify(swag)
 
 
-def make_stream_response(generator, fieldname):
+def make_stream_response(generator: Iterable[Any], fieldname: str) -> Response:
     """Make a streaming response from a generator"""
     def stream(sep=''):
         yield '{"%s":[' % fieldname
@@ -369,7 +385,7 @@ def sentiment():
     if not request.json or not validate(request.json):
         return make_response(jsonify({'error': 'Invalid input'}), 400)
     sentences = tuple(item['text'] for item in request.json['sentences'])
-    return make_stream_response(PIPELINE(sentences), 'scores')
+    return make_stream_response(DEPENDENCIES.pipeline(sentences), 'scores')
 
 
 @app.route('/api/terms', methods=['POST'])
@@ -412,7 +428,7 @@ def terms():
     if not request.json or not validate(request.json):
         return make_response(jsonify({'error': 'Invalid input'}), 400)
     sentences = tuple(request.json['sentences'])
-    return make_stream_response(SPELLCHECK(sentences), 'terms')
+    return make_stream_response(DEPENDENCIES.spellcheck(sentences), 'terms')
 
 
 #pylint: disable=unused-argument
@@ -428,8 +444,37 @@ def auth_error(status):
     return make_response(jsonify({'error': 'Invalid credentials'}), status)
 
 
+# pylint: disable=invalid-name
 def setupApp():
-    PIPELINE = Pipeline(MODEL_NAME, cache_dir=MODEL_CACHE_DIR)
-    SPELLCHECK = Spellcheck()
+    """Setup the app dependencies before running"""
+    load_dotenv(os.getenv('MODEL_ENV_DIR', '/etc/sentiment'))
+
+    model_proxy = as_boolean(os.getenv('MODEL_PROXY', default='f'))
+    model_cache_dir = os.getenv('MODEL_CACHE_DIR', '/var/cache/sentiment')
+    model_port = int(os.getenv('MODEL_PORT', default='3000'))
+    model_name = os.getenv(
+        'MODEL_NAME',
+        default='nlptown/bert-base-multilingual-uncased-sentiment')
+    model_debug = as_boolean(os.getenv('MODEL_DEBUG', default='f'))
+    model_token = os.getenv(
+        'MODEL_TOKEN', ''.join(
+            random.choices(string.ascii_uppercase + string.ascii_lowercase +
+                           string.digits,
+                           k=32)))
+    if model_proxy:
+        # Manage X-Forwarded-Proto
+        app.wsgi_app = ProxyFix(app.wsgi_app)
+
+    DEPENDENCIES.pipeline = Pipeline(model_name, cache_dir=model_cache_dir)
+    DEPENDENCIES.spellcheck = Spellcheck()
+    DEPENDENCIES.token = model_token
+    DEPENDENCIES.port = model_port
+    DEPENDENCIES.debug = model_debug
+
     return app
 
+
+if __name__ == "__main__":
+    app = setupApp()
+    print(f"USE BEARER TOKEN '{DEPENDENCIES.token}'")
+    app.run(host="0.0.0.0", port=DEPENDENCIES.port, debug=DEPENDENCIES.debug)
