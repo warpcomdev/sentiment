@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 """Twitter collector"""
 
-from typing import Optional, Dict, Mapping
+from typing import Dict, Mapping, Set
 
-import os
 import re
 from collections import defaultdict
 import datetime
 
 import pandas as pd
-import requests
 import preprocessor
+import sentiment
+
 preprocessor.set_options(
     preprocessor.OPT.URL,  #pylint: disable=no-member
     preprocessor.OPT.MENTION,  #pylint: disable=no-member
@@ -27,6 +27,16 @@ def load_mispell(path: str) -> Dict[str, Dict[str, str]]:
     for row in csv.values.tolist():
         data[row[0]][row[1]] = row[2]
     return dict(data)
+
+
+def load_stopwords(path: str) -> Set[str]:
+    """Load stop words dictionary"""
+    data: Set[str] = set()
+    csv = pd.read_csv(path)
+    # rows are 'lang', 'word'
+    for row in csv.values.tolist():
+        data.add(row[0])
+    return data
 
 
 class Api:
@@ -47,13 +57,17 @@ class Api:
         re.compile(r'\b[juJU]{3,}\b'),
     ]
     MISPELL_RE = load_mispell('mispell.csv')
+    STOP_WORDS = load_stopwords('stopwords.csv')
 
-    def __init__(self,
-                 sentiment_url: Optional[str] = None,
-                 sentiment_token: Optional[str] = None):
-        self.sentiment_url = sentiment_url or os.getenv('SENTIMENT_URL')
-        self.sentiment_token = sentiment_token or os.getenv('SENTIMENT_TOKEN')
-        self.headers = {'Authorization': f'Bearer {self.sentiment_token}'}
+    def __init__(self, model_name: str, model_cache_dir: str):
+        #  sentiment_url: Optional[str] = None,
+        #  sentiment_token: Optional[str] = None):
+        self.pipeline = sentiment.Pipeline(model_name,
+                                           cache_dir=model_cache_dir)
+        self.spellcheck = sentiment.Spellcheck()
+        # self.sentiment_url = sentiment_url or os.getenv('SENTIMENT_URL')
+        # self.sentiment_token = sentiment_token or os.getenv('SENTIMENT_TOKEN')
+        # self.headers = {'Authorization': f'Bearer {self.sentiment_token}'}
 
     @staticmethod
     def clean_tweet(lang: str, tweet: str) -> str:
@@ -100,12 +114,16 @@ class Api:
 
     def sentiment(self, cleaned: pd.DataFrame) -> pd.DataFrame:
         """Uses 'clean' to generate 'score'"""
-        body = {'sentences': cleaned['clean'].tolist()}
-        url = f'{self.sentiment_url}/api/sentiment'
-        with requests.post(url, headers=self.headers, json=body) as resp:
+        sentences = cleaned['clean'].tolist()
+        # url = f'{self.sentiment_url}/api/sentiment'
+        # body = {'sentences': sentences }
+        scores = self.pipeline(list(item['text'] for item in sentences))
+        if scores:
+            # with requests.post(url, headers=self.headers, json=body) as resp:
+            # scores = resp.json()['scores']
             # Transform score into polarity (-1, 0, 1)
             average = (sum(i * x for i, x in enumerate(item, 1))
-                       for item in resp.json()['scores'])
+                       for item in scores)
             score = tuple(1 if s >= 3.66 else -1 if s < 2.33 else 0
                           for s in average)
             cleaned = cleaned.assign(score=score)
@@ -113,25 +131,39 @@ class Api:
 
     def terms(self, cleaned: pd.DataFrame) -> pd.DataFrame:
         """Uses 'clean' to generate 'terms', 'termcount'"""
-        body = {'sentences': cleaned['clean'].tolist()}
-        url = f'{self.sentiment_url}/api/terms'
-        with requests.post(url, headers=self.headers, json=body) as resp:
-            cleaned = cleaned.assign(terms=resp.json()['terms'])
+        sentences = cleaned['clean'].tolist()
+        # url = f'{self.sentiment_url}/api/terms'
+        # body = {'sentences': sentences }
+        terms = list(self.spellcheck(sentences))
+        if terms:
+            #with requests.post(url, headers=self.headers, json=body) as resp:
+            # terms = resp.json()['terms']
+            cleaned = cleaned.assign(terms=terms)
         # Turn dict o terms into item list
         cleaned['terms'] = cleaned['terms'].apply(lambda d: tuple({
             'term': k,
             'repeat': v
-        } for k, v in d.items()))
+        } for k, v in d.items() if k not in Api.STOP_WORDS))
         # Remove tweets without terms
         cleaned['termcount'] = cleaned['terms'].map(len)
         cleaned = cleaned[cleaned['termcount'] > 0].reset_index()
         return cleaned
 
     @staticmethod
-    def normalize(cleaned: pd.DataFrame) -> pd.DataFrame:
-        """Uses 'created_at', 'impact', 'score' and 'termcount'
-        to generate:
+    def round_time(cleaned: pd.DataFrame) -> pd.DataFrame:
+        """Uses 'created_at' to generate:
         - 'day': Time of message rounded to hour below.
+        """
+        # Round to the closest hour
+        cleaned['day'] = pd.to_datetime(
+            cleaned['created_at']).apply(lambda dt: datetime.datetime(
+                dt.year, dt.month, dt.day, dt.hour, 0))
+        return cleaned
+
+    @staticmethod
+    def normalize(cleaned: pd.DataFrame) -> pd.DataFrame:
+        """Uses 'impact', 'score' and 'termcount'
+        to generate:
         - 'pos': Positive impacts including the term.
         - 'neg': Negative impacts including the term.
         - 'neutral': Neutral impacts including the term.
@@ -140,10 +172,6 @@ class Api:
         - 'neg_per_term': neg / number of terms in message.
         - 'neutral_per_term': Neutral / number of terms in message.
         """
-        # Round to the closest hour
-        cleaned['day'] = pd.to_datetime(
-            cleaned['created_at']).apply(lambda dt: datetime.datetime(
-                dt.year, dt.month, dt.day, dt.hour, 0))
         # Normalize impact dividing by number of terms
         cleaned['impact_per_term'] = cleaned['impact'] / cleaned['termcount']
         # Split impact amongst pos, neg and neutral
@@ -165,7 +193,11 @@ class Api:
         cleaned = pd.concat([cleaned.drop(['terms'], axis=1), pivot], axis=1)
         # Aggregate by unique fields (day, lang, term)
         unique = ['day', 'lang', 'term']
-        agg = {'impact': 'sum', 'impact_per_term': 'sum', 'repeat': 'sum', 'termcount': 'sum'}
+        agg = {
+            'impact': 'sum',
+            'impact_per_term': 'sum',
+            'repeat': 'sum',
+            'termcount': 'sum'
+        }
         agg.update({k: 'sum' for k in details})
         return cleaned.groupby(unique).agg(agg).reset_index()
-

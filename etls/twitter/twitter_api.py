@@ -75,7 +75,7 @@ class Reference:
         {'text': 'This is the tweet', 'place_cc': 'es' }
     ]
 
-    In order to do so, ee represent each reference with two pieces
+    In order to do so, we represent each reference with two pieces
     of information:
 
     - The path to the attribute in the 'data' object, e.g.
@@ -263,7 +263,7 @@ class TweetData:
 
     @staticmethod
     def _process(
-        frames: Iterable[pd.DataFrame]
+            frames: Iterable[pd.DataFrame]
     ) -> Generator[pd.DataFrame, None, None]:
         """Post-process frames before yielding them"""
         for frame in frames:
