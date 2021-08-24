@@ -1,6 +1,0 @@
-export ORION_USERNAME=admin_servicio
-export ORION_PASSWORD=password_servicio
-export ORION_SERVICE=servicio
-export ORION_SUBSERVICE=/customerexperience
-export KEYSTONE_URL=http://iot.demo.urbo2.es:5001
-export ORION_URL=http://iot.demo.urbo2.es:1026
