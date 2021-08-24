@@ -8,7 +8,7 @@ import random
 import json
 from collections import Counter
 from functools import wraps
-from typing import Optional, Iterable, Generator, Sequence, Dict, Callable, TypeVar, Any
+from typing import Optional, Iterable, Generator, List, Dict, Callable, TypeVar, Any
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
@@ -69,7 +69,7 @@ class Pipeline:
         self.model = AutoModelForSequenceClassification.from_pretrained(
             model_name, cache_dir=cache_dir)
 
-    def _batch(self, sentences: Iterable[str]) -> Iterable[Rating]:
+    def _batch(self, sentences: List[str]) -> Iterable[Rating]:
         """Analize a batch of sentences"""
         tokens = self.tokenizer(sentences,
                                 padding=True,
@@ -81,7 +81,7 @@ class Pipeline:
         return result
 
     def __call__(self,
-                 sentences: Sequence[str],
+                 sentences: List[str],
                  batch_size: int = 10) -> Generator[Rating, None, None]:
         """Generate sentiment data for a list of sentences"""
         for index in range(0, len(sentences), batch_size):

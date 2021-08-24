@@ -34,7 +34,7 @@ import twitter_sentiment
 def upsert_user_data(
         api: twitter_api.Api,
         screen_names: Sequence[str]) -> Generator[Any, None, None]:
-    """Upsert user data into database"""
+    """Generate sequence of user KPIs"""
     logging.info("upsert_user_data::screen_names = %s", screen_names)
     frame = twitter_api.UserData().frames(api, screen_names).reset_index()
     # Align information to database columns
@@ -116,7 +116,7 @@ def upsert_tweet_data(
         api: twitter_api.Api, sent_api: twitter_sentiment.Api,
         terms: Sequence[str],
         screen_names: Sequence[str]) -> Generator[Any, None, None]:
-    """Upsert user data into database"""
+    """Generate sequence of tweet KPIs"""
     logging.info("upsert_tweet_data::terms = %s", terms)
     logging.info("upsert_tweet_data::screen_names = %s", screen_names)
     terms_list = list()
@@ -303,6 +303,8 @@ def main():
     subservice = os.getenv("ORION_SUBSERVICE")
     username = os.getenv("ORION_USERNAME")
     password = os.getenv("ORION_PASSWORD")
+    model_name = os.getenv("MODEL_NAME", 'nlptown/bert-base-multilingual-uncased-sentiment')
+    model_cache_dir = os.getenv("MODEL_CACHE_DIR", '/tmp/sentiment')
 
     logging.info("Authenticating to url %s, service %s, username %s",
                  keystoneURL, service, username)
@@ -313,8 +315,7 @@ def main():
                                    subservice=subservice)
     orion_cb.auth(session, username, password)
 
-    sentiment_api = twitter_sentiment.Api(
-        'nlptown/bert-base-multilingual-uncased-sentiment', '/tmp/sentiment')
+    sentiment_api = twitter_sentiment.Api(model_name, model_cache_dir)
     api = twitter_api.Api()
     screen_names = pd.read_csv(
         os.path.join(etl_config_path, 'screen_names.csv'))
