@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import configargparse
 from istacpy.indicators.lite import indicators
+from istacpy.exceptions import GranularityNotAvailableError
 from orion import Session, ContextBroker
 
 JsonData = Mapping[str, Any]
@@ -17,13 +18,25 @@ JsonList = List[JsonData]
 BATCH_SIZE = 8
 
 
+# GLOBAL_HACK=True
 def ind_as_kpi(ind: indicators.Indicator,
                geo_grain: str,
                year: int = None) -> Generator[JsonData, None, None]:
     """Ind_as_kpi generates KeyPerformanceIndicator entities from an Indicator object"""
+    # global GLOBAL_HACK
+    # if GLOBAL_HACK:
+    #     if ind.code == "PIB_PM_CORRIENTE":
+    #         GLOBAL_HACK=False
+    #     else:
+    #         print("HACK: Skipping ", ind.code)
+    #         return
     time_query = 'Y' if year is None else f'Y|{year}'
     try:
         ind_data = ind.get_data(geo=geo_grain, time=time_query)
+    except GranularityNotAvailableError as grain_err:
+        logging.warning("GRANULARITY NOT AVAILABLE FOR %s, ID %s, YEAR %s, %s", ind.code,
+                      geo_grain, time_query, grain_err)
+        return
     except:
         logging.error("EXCEPTION WITH CODE %s, ID %s, YEAR %s", ind.code,
                       geo_grain, time_query)
