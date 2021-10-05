@@ -151,7 +151,7 @@ class ContextBroker:
             headers={
                 "Fiware-Service": self.service,
                 "Fiware-ServicePath": self.subservice,
-                "X-Auth-Token": "",
+                "X-Auth-Token": "missing", # Otherwise we get error 400 missing auth token
             }
         )
         if calls is not None and period is not None:
