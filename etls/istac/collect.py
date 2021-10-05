@@ -18,18 +18,10 @@ JsonList = List[JsonData]
 BATCH_SIZE = 8
 
 
-# GLOBAL_HACK=True
 def ind_as_kpi(ind: indicators.Indicator,
                geo_grain: str,
                year: int = None) -> Generator[JsonData, None, None]:
     """Ind_as_kpi generates KeyPerformanceIndicator entities from an Indicator object"""
-    # global GLOBAL_HACK
-    # if GLOBAL_HACK:
-    #     if ind.code == "PIB_PM_CORRIENTE":
-    #         GLOBAL_HACK=False
-    #     else:
-    #         print("HACK: Skipping ", ind.code)
-    #         return
     time_query = 'Y' if year is None else f'Y|{year}'
     try:
         ind_data = ind.get_data(geo=geo_grain, time=time_query)
@@ -44,8 +36,12 @@ def ind_as_kpi(ind: indicators.Indicator,
 
     entityid = f'{ind.code}:{ind_data.geographical_granularity}:{ind_data.time_granularity}:{ind_data.measure}'
     source = f'istac:{ind.code}'
+    totals = 0
     for geo, values in ind_data.data.items():
+        count = 0
         for data_year, value in zip(ind_data.index, values):
+            totals += 1
+            count += 1
             yield {
                 'id': entityid,
                 'type': 'KeyPerformanceIndicator',
@@ -78,6 +74,8 @@ def ind_as_kpi(ind: indicators.Indicator,
                     'value': ind_data.geographical_granularity
                 }
             }
+        logging.info("ENTRIES %s [%s]: %d", entityid, geo, count)
+    logging.info("TOTAL ENTRIES %s: %d", entityid, totals)
 
 
 def rotate(
@@ -135,7 +133,7 @@ def yearly_absolute_data(pool: ThreadPoolExecutor,
     ]
     for batch in batches:
         logging.info("Batching indicators %s",
-                     ", ".join(str(item[0]) for item in batch))
+                     ", ".join("%s:%s" % (item[0].code, item[1]) for item in batch))
         orion_cb.batch(session,
                        rotate(pool.map((lambda g: ind_as_kpi(*g)), batch)))
 
@@ -202,9 +200,9 @@ def main():
 if __name__ == "__main__":
 
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(logging.INFO)
     root.addHandler(handler)
 
     try:
