@@ -139,7 +139,7 @@ class ContextBroker:
     orionURL: str
     service: str
     subservice: str
-    _manager: Optional[Callable[..., requests.Response]]
+    _manager: Optional[Callable[..., requests.Response]] = None
 
     # pylint: disable=unused-argument,too-many-arguments
     def auth(self, session: Session, username: str, password: str, calls: Optional[int]=None, period: Optional[int]=None):
