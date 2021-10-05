@@ -151,6 +151,7 @@ class ContextBroker:
             headers={
                 "Fiware-Service": self.service,
                 "Fiware-ServicePath": self.subservice,
+                "X-Auth-Token": "",
             }
         )
         if calls is not None and period is not None:
