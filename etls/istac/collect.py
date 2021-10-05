@@ -26,8 +26,8 @@ def ind_as_kpi(ind: indicators.Indicator,
     try:
         ind_data = ind.get_data(geo=geo_grain, time=time_query)
     except GranularityNotAvailableError as grain_err:
-        logging.warning("GRANULARITY NOT AVAILABLE FOR %s, ID %s, YEAR %s, %s", ind.code,
-                      geo_grain, time_query, grain_err)
+        logging.warning("GRANULARITY NOT AVAILABLE FOR %s, ID %s, YEAR %s, %s",
+                        ind.code, geo_grain, time_query, grain_err)
         return
     except:
         logging.error("EXCEPTION WITH CODE %s, ID %s, YEAR %s", ind.code,
@@ -93,6 +93,10 @@ def rotate(
                     depleted = True
                 else:
                     value = next(item)
+                    logging.info(
+                        "Commiting write to %s id=%s timeinstant=(%s)",
+                        value['id'], value['product']['value'],
+                        value['TimeInstant']['value'])
                     yield value
             except StopIteration:
                 iterators[index] = None
@@ -132,8 +136,9 @@ def yearly_absolute_data(pool: ThreadPoolExecutor,
         for base in range(0, len(granularities), BATCH_SIZE)
     ]
     for batch in batches:
-        logging.info("Batching indicators %s",
-                     ", ".join("%s:%s" % (item[0].code, item[1]) for item in batch))
+        logging.info(
+            "Batching indicators %s",
+            ", ".join("%s:%s" % (item[0].code, item[1]) for item in batch))
         orion_cb.batch(session,
                        rotate(pool.map((lambda g: ind_as_kpi(*g)), batch)))
 
