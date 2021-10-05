@@ -194,7 +194,7 @@ def main():
                              orionURL=options.orion_url,
                              service=options.orion_service,
                              subservice=options.orion_subservice)
-    orion_cb.auth(session, options.orion_username, options.orion_password)
+    orion_cb.auth(session, options.orion_username, options.orion_password, calls=5, period=5)
 
     with ThreadPoolExecutor(max_workers=BATCH_SIZE) as pool:
         for inds in indicators_by_subject(pool):
