@@ -5,7 +5,7 @@
 
 import threading
 from enum import Enum
-from typing import Any, Dict, List, Optional, Callable, Set, Iterable, Generator
+from typing import Any, Dict, List, Optional, Callable, Set, Iterable, Sequence, Generator
 
 import attr
 import requests
@@ -120,13 +120,13 @@ class sessionManager:
         """Executes method retrying auth if needed"""
         call = getattr(session, method.value)
         try:
-            return call(url, headers=self.headers, params=params, body=body)
+            return call(url, headers=self.headers, params=params, json=body)
         except FetchError as err:
             # If error is unauthorized, try login again
             if err.response.status_code != 401:
                 raise
             self.auth(session)
-            return call(url, params=params, headers=self.headers, body=body)
+            return call(url, params=params, headers=self.headers, json=body)
 
 
 @attr.s(auto_attribs=True)
@@ -167,6 +167,22 @@ class ContextBroker:
         if resp is None:
             return None
         return resp.json()
+
+    def getAll(self, session: Session, entityType: str) -> Generator[Any, None, None]:
+        """Get all instances of a particular entity type"""
+        if self._manager is None:
+            raise ValueError("ContextBroker must be initialized calling to auth(...)")
+        url = f"{self.orionURL}/v2/entities"
+        offset, limit, retrieved = 0, 100, 100
+        while retrieved >= limit:
+            params = {"type": entityType, "offset": offset, "limit": limit}
+            resp = self._manager(session, fetchMethod.GET, url, params=params)
+            if resp is None:
+                return
+            data = resp.json()
+            retrieved = len(data)
+            offset += len(data)
+            yield from data
 
     def post(self, session: Session, entityId: str, entityType: str, entity: Any):
         """Create a particular entity"""
