@@ -120,13 +120,13 @@ class sessionManager:
         """Executes method retrying auth if needed"""
         call = getattr(session, method.value)
         try:
-            return call(url, headers=self.headers, params=params, json=body)
+            return call(url, headers=self.headers, params=params, body=body)
         except FetchError as err:
             # If error is unauthorized, try login again
             if err.response.status_code != 401:
                 raise
             self.auth(session)
-            return call(url, params=params, headers=self.headers, json=body)
+            return call(url, params=params, headers=self.headers, body=body)
 
 
 @attr.s(auto_attribs=True)
