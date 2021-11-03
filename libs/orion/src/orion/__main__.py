@@ -43,7 +43,12 @@ class Session(threading.local):
         super().__init__()
         self.session = requests.Session()
 
-    def get(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, **kw):
+    #pylint: disable=unused-argument
+    # Add unused "body" argument so that the method can be called as
+    # getattr(session, 'get')(header=h, params=p, body=b)
+    # Otherwise, 'body0 would get inside the **kw and be passed
+    # on to requests.session.get, that complains of unknown kw argument.
+    def get(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, body=None, **kw):
         """Utility method to perform a GET"""
         resp = self.session.get(url, params=params, headers=headers, **kw)
         if resp.status_code == 404:
@@ -66,7 +71,7 @@ class Session(threading.local):
             raise FetchError(response=resp, method="PUT", url=url, params=params, headers=headers, body=body)
         return resp
 
-    def delete(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, **kw):
+    def delete(self, url: str, headers: Optional[Any] = None, params: Optional[Any] = None, body=None, **kw):
         """Utility method to perform a DELETE"""
         resp = self.session.delete(url, params=params, headers=headers, **kw)
         if resp.status_code == 404:
