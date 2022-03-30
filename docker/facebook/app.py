@@ -156,7 +156,10 @@ def as_json(func):
 @app.route("/")
 def main():
     """Render the main page"""
-    return flask.send_from_directory('static', 'index.html')
+    return flask.render_template('index.html', **{
+        "appId": FACEBOOK_APPID,
+        "apiVersion": FACEBOOK_API_VERSION,
+    })
 
 
 @app.route('/static/<path:path>')

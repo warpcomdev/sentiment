@@ -60,16 +60,13 @@
 
   // Initializes facebook API
   window.fbAsyncInit = function() {
-    fetch_json("api/client", {})
-    .then(function(data) {
       FB.init({
-        appId      : data.appId,
+        appId      : "{{ appId }}",
         cookie     : true,                     // Enable cookies to allow the server to access the session.
         xfbml      : true,                     // Parse social plugins on this webpage.
-        version    : data.apiVersion           // Use this Graph API version for this call.
+        version    : "{{ apiVersion }}"        // Use this Graph API version for this call.
       });
       checkLoginState();
-    });
   };
 
   // Checks login state
@@ -145,7 +142,7 @@
 
 <!-- Load the JS SDK asynchronously -->
 <div id="fb-root"></div>
-<script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_ES/sdk.js#xfbml=1&version=v11.0&appId=2187416598057075"></script>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_ES/sdk.js#xfbml=1&version=v11.0&appId={{ appId }}"></script>
 
 </body>
 </html>
