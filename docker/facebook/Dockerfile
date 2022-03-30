@@ -6,13 +6,13 @@ VOLUME /app/secrets
 ENV LC_ALL=C.UTF-8
 
 # Add application
-RUN mkdir /app
+RUN mkdir -p /app
 ADD requirements.txt /app
-RUN --mount=type=cache,target=~/.cache/pip \
-    pip install -r /app/requirements.txt
+RUN pip install -r /app/requirements.txt
 
 WORKDIR /app
 ADD static/ /app/static/
+ADD templates/ /app/templates/
 ADD app.py /app
 
 CMD gunicorn --bind 0.0.0.0:${LOGIN_PORT:-3000} app:app -t 120 \

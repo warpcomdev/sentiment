@@ -19,7 +19,7 @@ import flask
 # DEBUG SECTION
 # ---------------------
 
-if os.getenv("DEBUG", "0") == "1":
+if os.getenv("DEBUG", "0").strip() == "1":
     import logging
     try: # for Python 3
         from http.client import HTTPConnection
@@ -36,10 +36,10 @@ if os.getenv("DEBUG", "0") == "1":
 # Configuration section
 # ---------------------
 
-FACEBOOK_APPID = os.getenv("FACEBOOK_APPID")
-FACEBOOK_APPSECRET = os.getenv("FACEBOOK_APPSECRET")
-FACEBOOK_API_VERSION = os.getenv("FACEBOOK_API_VERSION")
-SECRET_KEY = os.getenv("SECRET_KEY")
+FACEBOOK_APPID = os.getenv("FACEBOOK_APPID").strip()
+FACEBOOK_APPSECRET = os.getenv("FACEBOOK_APPSECRET").strip()
+FACEBOOK_API_VERSION = os.getenv("FACEBOOK_API_VERSION").strip()
+SECRET_KEY = os.getenv("SECRET_KEY").strip()
 
 # SECRET MANAGEMENT SECTION
 # -------------------------
