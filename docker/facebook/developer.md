@@ -39,7 +39,7 @@ Al añadir el producto *Facebook Login*, el dashboard te ofrece un asistente de 
 - `Embedded Browser oAuth Login`: No.
 - `Valid oAuth Redirect URLs`: Aquí deben enumerarse las URLs desde las que se acceda al portal de login, por ejemplo:
 
-  - https://facebook.analytics.urbo2.es
+  - https://f.analytics.urbo2.es
   - https://localhost:8443
 
 ![facebook oAuth settings](static/img/facebook_app_oauth.png)
