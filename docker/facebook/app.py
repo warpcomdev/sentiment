@@ -119,12 +119,23 @@ def follow_pages(url, token):
     """Follow the pagination for a given url"""
     resp = requests.get(url, params={"access_token": token}).json()
     for page in resp["data"]:
-        yield {
+        page_data = {
             "name": page["name"],
             "id": page["id"],
             "access_token": page["access_token"],
-            "_verbose": page,
         }
+        # Get info about instagram business account
+        instagram_url  = f"https://graph.facebook.com/{FACEBOOK_API_VERSION}/{page['id']}"
+        instagram_resp = requests.get(instagram_url, params={"fields": "instagram_business_account", "access_token": token}).json()
+        if "instagram_business_account" in instagram_resp:
+            if "id" in instagram_resp["instagram_business_account"]:
+                page_data["instagram_id"] = instagram_resp["instagram_business_account"]["id"]
+        # Add verbose debugging info
+        page_data.update({
+            "_verbose": resp,
+            "_verbose_ig": instagram_resp,
+        })
+        yield page_data
     if "next" in resp:
         yield from follow_pages(resp["next"], token)
 
