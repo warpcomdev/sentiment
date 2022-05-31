@@ -36,9 +36,9 @@ if os.getenv("DEBUG", "0").strip() == "1":
 # Configuration section
 # ---------------------
 
-FACEBOOK_APPID = os.getenv("FACEBOOK_APPID").strip()
-FACEBOOK_APPSECRET = os.getenv("FACEBOOK_APPSECRET").strip()
-FACEBOOK_API_VERSION = os.getenv("FACEBOOK_API_VERSION").strip()
+FACEBOOK_APPID = os.getenv("FACEBOOK_APPID", "").strip()
+FACEBOOK_APPSECRET = os.getenv("FACEBOOK_APPSECRET", "").strip()
+FACEBOOK_API_VERSION = os.getenv("FACEBOOK_API_VERSION", "").strip()
 SECRET_KEY = os.getenv("SECRET_KEY").strip()
 
 # SECRET MANAGEMENT SECTION
@@ -123,6 +123,7 @@ def follow_pages(url, token):
             "name": page["name"],
             "id": page["id"],
             "access_token": page["access_token"],
+            "_verbose": page,
         }
     if "next" in resp:
         yield from follow_pages(resp["next"], token)
