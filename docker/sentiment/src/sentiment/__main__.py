@@ -203,6 +203,8 @@ class Spellcheck:
             # characters. See:
             # https://en.wikipedia.org/wiki/Variation_Selectors_(Unicode_block)
             sentence = sentence.replace('\ufe0f', '').replace('\ufe0e', '')
+            # encode to latin-1 because spell checking only supports that codec.
+            sentence = sentence.encode(encoding='latin-1', errors='ignore').decode(encoding='latin-1')
             # Lemmatize skipping stop words
             # or short words (<= 2 characters)
             doc = tokenizer(sentence)
