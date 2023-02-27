@@ -89,6 +89,8 @@ El siguiente paso es **publicar la aplicación en google**, para que los usuario
 
 ![youtube oAuth consent screen](static/img/youtube_consent_screen.png)
 
+**NOTA**: Es imprescindible que la APp se publique (el modo debe pasar de "Testing" a "production"), en caso contrario los tokens caducarán cada semana.
+
 ### Obtención de token
 
 El último paso necesario es obtener un **refresh token** de la cuenta del usuario cuyas estadísticas se van a recopilar, configurado con **access_type=offline**. Marcar el token como acceso offline permite a la aplicación refrescarlo cuando sea conveniente sin que sea necesario que el usuario esté iniciando sesión en la aplicación cada cierto tiempo.
