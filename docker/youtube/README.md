@@ -15,6 +15,7 @@ La aplicación puede desplegarse como un contenedor docker, usando la imagen pub
 - `SERVICE_NAME`: Nombre del servicio / API de google que se va a consultar. Por defecto, **youtubereporting**.
 - `SECRET_KEY`: Secreto con el que se cifran y descifran las credenciales del usuario.
 - `API_VERSION`: Versión de la API de Google Discovery (por defecto, **v1**).
+- `INCLUDE_GMB`: Incluir o no los permisos para conectar a Google My Business en el scope (por defecto, `false`)
 - `SECRET_PATH`: Ruta al directorio donde está el fichero de credenciales `client_secret.json` (por defecto, **secrets**).
 - `DEBUG`: "1" para activar el log de debug, "0" en otro caso.
 

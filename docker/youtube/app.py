@@ -5,13 +5,12 @@ import os
 import base64
 import json
 import xdrlib
-from typing import Any, Optional
+from typing import Tuple,Any, Optional
 from functools import lru_cache
 import requests
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
-import dotenv
 import flask
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
@@ -59,10 +58,13 @@ CLIENT_SECRET_PATH = os.environ.get("SECRET_PATH",
 SERVICE_NAME = os.environ.get("SERVICE_NAME", "youtubereporting")
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 API_VERSION = os.environ.get("API_VERSION", "v1")
+INCLUDE_GMB = os.environ.get("INCLUDE_GMB", "true")
 API_SCOPES = [
     # Youtube
     'https://www.googleapis.com/auth/youtube.readonly',
     'https://www.googleapis.com/auth/yt-analytics.readonly',
+]
+API_SCOPES_GMB = [
     # Google My Business
     'https://www.googleapis.com/auth/business.manage'
 ]
@@ -73,7 +75,7 @@ API_SCOPES = [
 def derive_key(password: str,
                salt: Optional[bytes] = None,
                salt_bytes: int = 32,
-               dk_len: int = 32) -> (bytes, bytes):
+               dk_len: int = 32) -> Tuple[bytes, bytes]:
     """Derive encryption key from given password"""
     if salt is None:
         salt = Random.new().read(salt_bytes)
@@ -130,7 +132,16 @@ app.wsgi_app = ProxyFix(app.wsgi_app,
 
 @app.route('/')
 def index():
-    return flask.render_template('index.html', status='')
+    """Render index page"""
+    return flask.redirect('login')
+
+
+@app.route('/login')
+def login():
+    """Render login page"""
+    if 'credentials' in flask.session:
+        return flask.redirect('test')
+    return flask.render_template('index.html', status='', authorized=False)
 
 
 @app.route('/static/<path:path>')
@@ -142,11 +153,15 @@ def send_static(path: str):
 @app.route('/test')
 def test():
     if 'credentials' not in flask.session:
-        return flask.redirect('authorize')
+        return flask.redirect('login')
 
     # Load credentials from the session.
     credentials = google.oauth2.credentials.Credentials(
         **flask.session['credentials'])
+
+    session_vault = decrypt(SECRET_KEY, flask.session['vault'])
+    client_config = session_vault['client_config']
+    api_scopes = session_vault['api_scopes']
 
     service = googleapiclient.discovery.build(SERVICE_NAME,
                                               API_VERSION,
@@ -154,6 +169,8 @@ def test():
                                               cache_discovery=False)
 
     plaintext = {
+        "client_config": client_config,
+        "api_scopes": api_scopes,
         "credentials": flask.session['credentials'],
         "methods": [k for k in dir(service) if not k.startswith("_")]
     }
@@ -163,14 +180,28 @@ def test():
     <p>Por favor envíe el siguiente texto a soporte:</p>
     <pre>%s</pre>
     """ % "\n".join(chunks(encrypt(SECRET_KEY, plaintext)))
-    return flask.render_template('index.html', status=status)
+    return flask.render_template('index.html', status=status, authorized=True)
 
 
-@app.route('/authorize')
+@app.route('/authorize', methods=['POST'])
 def authorize():
+
+    # Generate API scopes
+    api_scopes = list(API_SCOPES)
+    include_gmb = flask.request.form.get('include_gmb')
+    if include_gmb:
+        api_scopes.extend(API_SCOPES_GMB)
+
+    # Generate client config json
+    client_config = json.loads(flask.request.form['client_config'])
+    vault = {
+        "client_config": client_config,
+        "api_scopes": api_scopes
+    }
+    flask.session['vault'] = encrypt(SECRET_KEY, vault)
+
     # Create flow instance to manage the OAuth 2.0 Authorization Grant Flow steps.
-    flow = google_auth_oauthlib.flow.Flow.from_client_config(fromjson(CLIENT_SECRET_PATH),
-                                                             scopes=API_SCOPES)
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(client_config, scopes=api_scopes)
 
     # The URI created here must exactly match one of the authorized redirect URIs
     # for the OAuth 2.0 client, which you configured in the API Console. If this
@@ -196,10 +227,11 @@ def oauth2callback():
     # Specify the state when creating the flow in the callback so that it can
     # verified in the authorization server response.
     state = flask.session['state']
+    vault = decrypt(SECRET_KEY, flask.session['vault'])
+    client_config = vault['client_config']
+    api_scopes = vault['api_scopes']
 
-    flow = google_auth_oauthlib.flow.Flow.from_client_config(fromjson(CLIENT_SECRET_PATH),
-                                                             scopes=API_SCOPES,
-                                                             state=state)
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(client_config, scopes=api_scopes, state=state)
     flow.redirect_uri = flask.url_for('oauth2callback', _external=True)
 
     # Use the authorization server's response to fetch the OAuth 2.0 tokens.
@@ -220,7 +252,7 @@ def revoke():
     if 'credentials' not in flask.session:
         status = """Debe <a href="authorize">autorizar</a> el acceso a la
                  aplicación, antes de revocar las credenciales."""
-        return flask.render_template('index.html', status=status)
+        return flask.render_template('index.html', status=status, authorized=False)
 
     credentials = google.oauth2.credentials.Credentials(
         **flask.session['credentials'])
@@ -231,19 +263,20 @@ def revoke():
         headers={'content-type': 'application/x-www-form-urlencoded'})
 
     status_code = getattr(result, 'status_code')
+    flask.session.clear()
     if status_code == 200:
         return flask.render_template(
-            'index.html', status='Credenciales revocadas con éxito.')
+            'index.html', status='Credenciales revocadas con éxito.', authorized=False)
     return flask.render_template(
         'index.html',
-        status='Se ha producido un error revocando las credenciales.')
+        status='Se ha producido un error revocando las credenciales.', authorized=False)
 
 
 @app.route('/clear')
 def clear():
     if 'credentials' in flask.session:
-        del flask.session['credentials']
-    return flask.render_template('index.html', status='Sesión cerrada.')
+        flask.session.clear()
+    return flask.render_template('index.html', status='Sesión cerrada.', authorized=False)
 
 @app.route('/healthz')
 def healthz():

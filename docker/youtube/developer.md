@@ -18,6 +18,8 @@ Es también imprescindible que se habilite el acceso a las siguientes APIs en el
 - Youtube Data API v3
 - Youtube Reporting API
 - Youtube Analytics API
+
+Opcional:
 - Google My Business API
 
 ![youtube APIs](static/img/youtube_api.png)
@@ -89,7 +91,7 @@ El siguiente paso es **publicar la aplicación en google**, para que los usuario
 
 ![youtube oAuth consent screen](static/img/youtube_consent_screen.png)
 
-**NOTA**: Es imprescindible que la APp se publique (el modo debe pasar de "Testing" a "production"), en caso contrario los tokens caducarán cada semana.
+**NOTA**: Es imprescindible que la App se publique (el modo debe pasar de "Testing" a "production"), en caso contrario los tokens caducarán cada semana.
 
 ### Obtención de token
 
@@ -115,4 +117,4 @@ Recomendamos seguir los ejemplos incluidos para [server-side apps](https://devel
 - [Step 4: Handle the oAuth 2.0 server response](https://developers.google.com/identity/protocols/oauth2/web-server#handlingresponse)
 - [Step 5: Exchange authorization code for refresh and access token](https://developers.google.com/identity/protocols/oauth2/web-server#exchange-authorization-code). Este último paso es el que nos permite obtener el **refresh token**.
 
-El fichero de credenciales json descargado desde el protal de desarrollaro, y el token de refresco obtenido de la API oAuth de google, son los dos elementos de configuración que requiere la vertical.
+El fichero de credenciales json descargado desde el portal de desarrollo, y el token de refresco obtenido de la API oAuth de google, son los dos elementos de configuración que requiere la vertical.

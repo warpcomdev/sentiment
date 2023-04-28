@@ -8,11 +8,27 @@
 </head>
 
 <body>
+    <form method="POST" action="authorize">
     <table>
+        {% if authorized == false %}
         <tr>
-            <td><a href="authorize">Iniciar sesión</a></td>
-            <td>Iniciar sesión con su cuenta de google.</td>
+            <td>Fichero client_secret.json</td>
+            <td><textarea id="client_config" name="client_config" rows="12" cols="50"></textarea></td>
         </tr>
+        <tr>
+            <td colspan="2">
+                (Para instrucciones sobre como obtener este fichero, por favor consulte <a href="https://github.com/warpcomdev/sentiment/blob/master/docker/youtube/developer.md#obtenci%C3%B3n-de-credenciales-oauth">este enlace</a>)
+            </td>
+        </tr>
+        <tr>
+            <td>Incluir API Google My Business</td>
+            <td><input type="checkbox" id="include_gmb" name="include_gmb"/></td>
+        </tr>
+        <tr>
+            <td>Iniciar sesión</a></td>
+            <td><input type="submit" name="iniciar sesión" value="Iniciar sesión con su cuenta de google"/></td>
+        </tr>
+        {% else %}
         <tr>
             <td><a href="test">Validar sesión</a></td>
             <td>Volver a obtener token, en caso de que su sesión ya esté iniciada.</td>
@@ -26,7 +42,9 @@
             <td>Terminar sesión en este site sin revocar el acceso a la aplicación.
                 Es seguro efectuar este paso tras haber obtenido el token.</td>
         </tr>
+        {% endif %}
     </table>
+    </form>
 
 <div id="status">
     {{ status|safe }}
