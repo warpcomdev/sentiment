@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 
 <head>
     <title>Youtube Login Page</title>
@@ -12,13 +12,12 @@
     <table>
         {% if authorized == false %}
         <tr>
-            <td>Fichero client_secret.json</td>
-            <td><textarea id="client_config" name="client_config" rows="12" cols="50"></textarea></td>
-        </tr>
-        <tr>
-            <td colspan="2">
-                (Para instrucciones sobre como obtener este fichero, por favor consulte <a href="https://github.com/warpcomdev/sentiment/blob/master/docker/youtube/developer.md#obtenci%C3%B3n-de-credenciales-oauth">este enlace</a>)
+            <td>
+                Fichero client_secret.json
+                <br/>
+                <a target="_blank" href="https://github.com/warpcomdev/sentiment/blob/master/docker/youtube/developer.md#obtenci%C3%B3n-de-credenciales-oauth">(cómo obtener)</a>
             </td>
+            <td><textarea id="client_config" name="client_config" rows="12" cols="50"></textarea></td>
         </tr>
         <tr>
             <td>Incluir API Google My Business</td>

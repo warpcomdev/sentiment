@@ -133,12 +133,6 @@ app.wsgi_app = ProxyFix(app.wsgi_app,
 @app.route('/')
 def index():
     """Render index page"""
-    return flask.redirect('login')
-
-
-@app.route('/login')
-def login():
-    """Render login page"""
     if 'credentials' in flask.session:
         return flask.redirect('test')
     return flask.render_template('index.html', status='', authorized=False)
@@ -153,7 +147,7 @@ def send_static(path: str):
 @app.route('/test')
 def test():
     if 'credentials' not in flask.session:
-        return flask.redirect('login')
+        return flask.redirect(flask.route_for('index'))
 
     # Load credentials from the session.
     credentials = google.oauth2.credentials.Credentials(
@@ -236,7 +230,17 @@ def oauth2callback():
 
     # Use the authorization server's response to fetch the OAuth 2.0 tokens.
     authorization_response = flask.request.url
-    flow.fetch_token(authorization_response=authorization_response)
+    try:
+        flow.fetch_token(authorization_response=authorization_response)
+    except Exception as err:
+        # When the token has some scope and the authorization has been set for a different scope,
+        # we might get an error. In this case, try revoking and authorizing again.
+        status = """<p>Error al iniciar sesión.</p>
+        <p>Para cambiar el valor de la opción <i>Incluir API Google My Business</i>
+        en una cuenta que ya ha sido autorizada, primero debe <b>revocar la autorización</b>.</p>
+        <p>Pruebe a volver a iniciar sesión cambiando el estado del checkbox <i>Incluir API Google My Business</i>,
+        y a continuación pulsar sobre la opción <b>Revocar acceso</b></p>"""
+        return flask.render_template('index.html', status=status, authorized=False)
 
     # Store credentials in the session.
     # ACTION ITEM: In a production app, you likely want to save these
